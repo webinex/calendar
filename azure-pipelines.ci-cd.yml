@@ -1,0 +1,50 @@
+name: Webinex / Calendar / CI
+
+pr:
+  - master
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  - task: UseDotNet@2
+    displayName: ".NET SDK"
+    inputs:
+      workingDirectory: src
+      useGlobalJson: true
+
+  - task: DotNetCoreCLI@2
+    displayName: "Restore packages"
+    inputs:
+      command: "restore"
+      projects: "src/Webinex.Calendar.sln"
+      verbosityRestore: normal
+
+  - task: DotNetCoreCLI@2
+    displayName: "Build"
+    inputs:
+      command: "build"
+      arguments: "--no-restore"
+      projects: "src/Webinex.Calendar.sln"
+
+  - task: DotNetCoreCLI@2
+    displayName: "Test"
+    inputs:
+      command: "test"
+      projects: "**/*.csproj"
+      arguments: "--no-build"
+    env:
+      WEBINEX_CALENDAR_INTEGRATION_TESTS__SQL_SERVER_CONNECTION_STRING: $(WEBINEX_CALENDAR_INTEGRATION_TESTS__SQL_SERVER_CONNECTION_STRING)
+
+  - ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
+    - task: PowerShell@2
+      displayName: Build & Publish
+      inputs:
+        filePath: scripts/Publish-NugetPackages.ps1
+        arguments: "-ApiKey $(NUGET_API_KEY)"
+        errorActionPreference: stop
+        failOnStderr: false

@@ -1,0 +1,7 @@
+{
+  "extends": ["react-app", "react-app/jest"],
+  "rules": {
+    "react/jsx-pascal-case": "off",
+    "jsx-a11y/anchor-is-valid": "off"
+  }
+}

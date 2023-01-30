@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar", "Webinex.Calendar\Webinex.Calendar.csproj", "{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Example", "Webinex.Calendar.Example\Webinex.Calendar.Example.csproj", "{989F517F-B658-4101-9A14-225147A6A294}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Tests", "Webinex.Calendar.Tests\Webinex.Calendar.Tests.csproj", "{3B86C58A-1FCD-4F2D-9B90-7B61168E21CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Tests.Integration", "Webinex.Calendar.Tests.Integration\Webinex.Calendar.Tests.Integration.csproj", "{0F724366-C550-4A27-8643-4C7AE6BA8929}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.All", "Webinex.Calendar.All\Webinex.Calendar.All.csproj", "{8B086E07-D77B-4610-B657-F7A693CAEDEF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{989F517F-B658-4101-9A14-225147A6A294}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{989F517F-B658-4101-9A14-225147A6A294}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{989F517F-B658-4101-9A14-225147A6A294}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{989F517F-B658-4101-9A14-225147A6A294}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B86C58A-1FCD-4F2D-9B90-7B61168E21CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B86C58A-1FCD-4F2D-9B90-7B61168E21CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B86C58A-1FCD-4F2D-9B90-7B61168E21CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B86C58A-1FCD-4F2D-9B90-7B61168E21CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F724366-C550-4A27-8643-4C7AE6BA8929}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F724366-C550-4A27-8643-4C7AE6BA8929}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F724366-C550-4A27-8643-4C7AE6BA8929}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F724366-C550-4A27-8643-4C7AE6BA8929}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
