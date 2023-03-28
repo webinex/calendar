@@ -1,83 +1,42 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Webinex.Calendar.Filters;
 
 internal static class Expressions
 {
-    public static Expression<Func<T, bool>>? AndOrNull<T>(
-        params Expression<Func<T, bool>>[] expressions)
-    {
-        if (expressions.Length == 0)
-            return null;
-
-        if (expressions.Length == 1)
-            return expressions[0];
-
-        return And(expressions);
-    }
-
     public static Expression<Func<T, bool>> And<T>(
         Expression<Func<T, bool>> expr1,
         Expression<Func<T, bool>> expr2)
     {
         return GetAggregatedExpression(Expression.AndAlso, expr1, expr2);
     }
-    
-    public static Expression<Func<T, bool>>? NullableOrOrNull<T>(
-        params Expression<Func<T, bool>>?[] expressions)
-    {
-        expressions = expressions.Where(x => x != null).ToArray();
-        
-        if (expressions.Length == 0)
-            return null;
-
-        if (expressions.Length == 1)
-            return expressions[0];
-
-        return Or(expressions!);
-    }
-    
-    public static Expression<Func<T, bool>>? NullableAndOrNull<T>(
-        params Expression<Func<T, bool>>?[] expressions)
-    {
-        expressions = expressions.Where(x => x != null).ToArray();
-        
-        if (expressions.Length == 0)
-            return null;
-
-        if (expressions.Length == 1)
-            return expressions[0];
-
-        return And(expressions!);
-    }
 
     public static Expression<Func<T, bool>> Or<T>(
-        Expression<Func<T, bool>>[] expressions)
+        IEnumerable<Expression<Func<T, bool>>> expressions)
     {
-        if (expressions.Length < 2)
-        {
-            throw new ArgumentException("Might be at least 2 expressions", nameof(expressions));
-        }
+        expressions = expressions.ToArray();
+
+        if (!expressions.Any())
+            throw new ArgumentException("Might be at least 1 expression", nameof(expressions));
+
+        if (expressions.Count() == 1)
+            return expressions.ElementAt(0);
 
         return expressions.Skip(1).Aggregate(expressions.ElementAt(0), Or);
     }
 
-    public static Expression<Func<T, bool>> And<T>(
-        Expression<Func<T, bool>>[] expressions)
+    public static Expression<Func<T, bool>> Or<T>(
+        params Expression<Func<T, bool>>[] expressions)
     {
-        if (expressions.Length < 2)
-        {
-            throw new ArgumentException("Might be at least 2 expressions", nameof(expressions));
-        }
-
-        return expressions.Skip(1).Aggregate(expressions.ElementAt(0), And);
+        return Or(expressions.AsEnumerable());
     }
 
     public static Expression<Func<T, bool>> Or<T>(
         Expression<Func<T, bool>> expr1,
         Expression<Func<T, bool>> expr2)
     {
-        return GetAggregatedExpression(Expression.Or, expr1, expr2);
+        return GetAggregatedExpression(Expression.OrElse, expr1, expr2);
     }
 
     private static Expression<Func<T, bool>> GetAggregatedExpression<T>(
@@ -92,7 +51,7 @@ internal static class Expressions
         return Expression.Lambda<Func<T, bool>>(aggregate(left, right), parameter);
     }
 
-    internal static Expression ReplaceParameter(
+    private static Expression ReplaceParameter(
         Expression expression,
         ParameterExpression oldParameter,
         ParameterExpression newParameter)
@@ -100,30 +59,47 @@ internal static class Expressions
         return new ReplaceExpressionVisitor(oldParameter, newParameter).Visit(expression)!;
     }
 
-    public static Expression<Func<TEntity, bool>> Eq<TEntity>(
-        Expression<Func<TEntity, object>> selector,
-        object value)
-    {
-        var parameter = Expression.Parameter(typeof(TEntity));
-        var valueType = LambdaExpressions.ReturnType(selector);
-        var propertyExpression = LambdaExpressions.PropertyAccessExpression(selector, parameter);
-        var valueExpression = Expression.Constant(value, valueType);
-
-        return Expression.Lambda<Func<TEntity, bool>>(
-            Expression.Equal(
-                propertyExpression,
-                valueExpression),
-            parameter);
-    }
-
     public static Expression<Func<TEntity, bool>> Child<TEntity, TChild>(
         Expression<Func<TEntity, TChild>> selector,
         Expression<Func<TChild, bool>> predicate)
     {
         var parameter = Expression.Parameter(typeof(TEntity));
-        var propertyAccessExpression = LambdaExpressions.PropertyAccessExpression(selector, parameter);
-        var newPredicate = new ReplaceExpressionVisitor(predicate.Parameters[0], propertyAccessExpression).Visit(predicate.Body)!;
+        var propertyAccessExpression = PropertyAccessExpression(selector, parameter);
+        var newPredicate =
+            new ReplaceExpressionVisitor(predicate.Parameters[0], propertyAccessExpression).Visit(predicate.Body)!;
         return Expression.Lambda<Func<TEntity, bool>>(newPredicate, parameter);
+    }
+
+    private static Expression PropertyAccessExpression<TEntity, TResult>(
+        Expression<Func<TEntity, TResult>> selector,
+        ParameterExpression parameter)
+    {
+        return ReplaceParameter(
+            PropertyAccessExpression(selector.Body),
+            selector.Parameters[0],
+            parameter);
+    }
+
+    internal static MemberExpression PropertyAccessExpression(Expression expression)
+    {
+        switch (expression)
+        {
+            case MemberExpression memberExpression:
+                if (!memberExpression.Member.MemberType.HasFlag(MemberTypes.Property))
+                    throw new InvalidOperationException($"Member {memberExpression.Member.Name} isn't a property");
+                return memberExpression;
+
+            case UnaryExpression unaryExpression:
+                if (unaryExpression.NodeType == ExpressionType.Convert &&
+                    unaryExpression.Operand.NodeType == ExpressionType.MemberAccess)
+                    return PropertyAccessExpression(unaryExpression.Operand);
+                throw new InvalidOperationException(
+                    $"Unable to resolve property from unary expression {unaryExpression.NodeType}");
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unable to resolve property access from expression of type {expression.GetType().Name}");
+        }
     }
 
     private class ReplaceExpressionVisitor

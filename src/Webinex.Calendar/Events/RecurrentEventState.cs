@@ -2,7 +2,7 @@
 
 namespace Webinex.Calendar.Events;
 
-public class RecurrentEventState<TData>
+public class RecurrentEventState<TData> : IEvent
     where TData : class
 {
     public Guid RecurrentEventId { get; protected set; }
@@ -10,11 +10,12 @@ public class RecurrentEventState<TData>
     public Period? MoveTo { get; protected set; }
     public TData Data { get; protected set; } = null!;
     public bool Cancelled { get; protected set; }
+    EventType IEvent.Type => EventType.RecurrentEventState;
 
     public Event<TData> ToEvent()
     {
         var period = MoveTo ?? Period;
-        return new Event<TData>(null, RecurrentEventId, period.Start, period.End, Data, Cancelled);
+        return new Event<TData>(null, RecurrentEventId, period, Data, Cancelled, Period);
     }
 
     public static RecurrentEventState<TData> New(

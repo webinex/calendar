@@ -3,11 +3,12 @@ using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.Events;
 
-public abstract class RecurrentEvent
+public abstract class RecurrentEvent : IEvent
 {
     public Guid Id { get; protected set; }
     public Repeat Repeat { get; protected set; } = null!;
     public OpenPeriod Effective { get; protected set; } = null!;
+    EventType IEvent.Type => EventType.RecurrentEvent;
 }
 
 public class RecurrentEvent<TData> : RecurrentEvent
@@ -27,22 +28,21 @@ public class RecurrentEvent<TData> : RecurrentEvent
 
     public TData Data { get; protected set; } = null!;
 
-    public static RecurrentEvent<TData> NewMatch(
+    public static RecurrentEvent<TData> NewWeekday(
+        DateTimeOffset start,
+        DateTimeOffset? end,
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         Weekday[] weekdays,
-        DayOfMonth? dayOfMonth,
-        DateTimeOffset since,
-        DateTimeOffset? until,
         TData data)
     {
-        var repeat = Repeat.NewMatch(timeOfTheDayUtcMinutes, durationMinutes, weekdays, dayOfMonth);
+        var repeat = Repeat.NewWeekday(timeOfTheDayUtcMinutes, durationMinutes, weekdays);
 
         return new RecurrentEvent<TData>
         {
             Id = Guid.NewGuid(),
             Repeat = repeat,
-            Effective = new OpenPeriod(since, until).ToUtc(),
+            Effective = new OpenPeriod(start, end).ToUtc(),
             Data = data,
         };
     }
@@ -62,6 +62,23 @@ public class RecurrentEvent<TData> : RecurrentEvent
             Repeat = repeat,
             Effective = new OpenPeriod(start, end).ToUtc(),
             Data = data,
+        };
+    }
+
+    public static RecurrentEvent<TData> NewDayOfMonth(
+        DateTimeOffset start,
+        DateTimeOffset? end,
+        int timeOfTheDayUtcMinutes,
+        int durationMinutes,
+        DayOfMonth dayOfMonth,
+        TData data)
+    {
+        return new RecurrentEvent<TData>
+        {
+            Id = Guid.NewGuid(),
+            Effective = new OpenPeriod(start, end).ToUtc(),
+            Data = data,
+            Repeat = Repeat.NewDayOfMonth(timeOfTheDayUtcMinutes, durationMinutes, dayOfMonth),
         };
     }
 
@@ -97,12 +114,12 @@ public class RecurrentEvent<TData> : RecurrentEvent
 
             var data = state?.Data ?? Data;
             if (state?.MoveTo == null)
-                return new Event<TData>(null, Id, period.Start, period.End, data, cancelled);
+                return new Event<TData>(null, Id, period, data, cancelled, null);
 
             if (state.MoveTo.Start >= to || state.MoveTo.End <= from)
                 return null;
 
-            return new Event<TData>(null, Id, state.MoveTo.Start, state.MoveTo.End, data, cancelled);
+            return new Event<TData>(null, Id, state.MoveTo, data, cancelled, state.Period);
         }
 
         return periods.Select(Map)
@@ -114,11 +131,12 @@ public class RecurrentEvent<TData> : RecurrentEvent
 
     private Period[] ToPeriods(DateTimeOffset from, DateTimeOffset to)
     {
-        return Repeat.Interval != null
-            ? RepeatEventCalculator.Interval(this, from, to)
-            : RepeatEventCalculator.Matches(this, from, to);
+        return RepeatEventCalculator.Matches(this, from, to);
     }
 
-    public int DurationMinutes() => Repeat.Interval != null ? Repeat.Interval.DurationMinutes :
-        Repeat.Match != null ? Repeat.Match.DurationMinutes : throw new InvalidOperationException();
+    public int DurationMinutes()
+    {
+        return Repeat.Interval != null ? Repeat.Interval.DurationMinutes :
+            Repeat.Weekday != null ? Repeat.Weekday.DurationMinutes : throw new InvalidOperationException();
+    }
 }

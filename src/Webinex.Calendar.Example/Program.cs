@@ -1,22 +1,23 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Webinex.Calendar;
-using Webinex.Calendar.DataAccess;
 using Webinex.Calendar.Example;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(x => x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCalendar<EventData>();
+
+builder.Services.AddCalendar<EventData>(x => x
+    .AddDbContext<ExampleDbContext>());
 
 builder.Services.AddDbContext<ExampleDbContext>(x =>
     x.UseSqlServer("Server=localhost;Database=webinex_calendar;Trusted_Connection=True;TrustServerCertificate=True;"));
-
-builder.Services.AddScoped<ICalendarDbContext<EventData>>(x => x.GetRequiredService<ExampleDbContext>());
 
 var app = builder.Build();
 

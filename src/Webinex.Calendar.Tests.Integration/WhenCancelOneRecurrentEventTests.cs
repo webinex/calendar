@@ -17,16 +17,16 @@ public class WhenCancelOneRecurrentEventTests : IntegrationTestsBase
             TimeSpan.FromHours(1).TotalMinutes.Round(),
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var eventsBefore = await Calendar.GetAllAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
+        var eventsBefore = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
         eventsBefore.Length.Should().Be(2);
         
-        await Calendar.CancelOneRecurrentEventAsync(@event, JAN1_2023_UTC.AddHours(12));
+        await Calendar.Recurrent.CancelAppearanceAsync(@event, JAN1_2023_UTC.AddHours(12));
         await DbContext.SaveChangesAsync();
 
-        var eventsAfter = await Calendar.GetAllAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
+        var eventsAfter = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
         eventsAfter.Length.Should().Be(1);
         eventsAfter.Single().Start.Should().Be(JAN1_2023_UTC);
     }

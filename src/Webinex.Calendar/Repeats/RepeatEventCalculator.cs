@@ -7,10 +7,12 @@ internal static class RepeatEventCalculator
 {
     public static Period[] Matches(RecurrentEvent @event, DateTimeOffset start, DateTimeOffset end)
     {
-        return new MatchCalculator(@event, start.ToUtc(), end.ToUtc()).Calculate();
+        return @event.Repeat.Interval != null
+            ? Interval(@event, start, end)
+            : new MatchCalculator(@event, start.ToUtc(), end.ToUtc()).Calculate();
     }
 
-    public static Period[] Interval(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset to)
+    private static Period[] Interval(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset to)
     {
         var date = FindFirstMatchingIntervalStart(@event, from);
         var periods = new LinkedList<Period>();
@@ -55,21 +57,36 @@ internal static class RepeatEventCalculator
     private class MatchCalculator
     {
         private readonly RecurrentEvent _event;
-        private readonly RepeatMatch _match;
+        private readonly IRepeatBase _match;
         private readonly DateTimeOffset _from;
         private readonly DateTimeOffset _to;
+        private readonly Weekday[]? _weekdays;
+        private readonly DayOfMonth? _dayOfMonth;
+        private readonly LinkedList<Period> _matches = new();
 
         private DateTimeOffset? _reference;
-        private readonly LinkedList<Period> _matches = new();
 
         public MatchCalculator(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset to)
         {
             _event = @event;
-            _match = @event.Repeat.Match!;
             _from = from;
             _to = to;
-
             _reference = from;
+
+            if (@event.Repeat.Weekday != null)
+            {
+                _match = @event.Repeat.Weekday;
+                _weekdays = @event.Repeat.Weekday.Weekdays;
+            }
+            else if (@event.Repeat.DayOfMonth != null)
+            {
+                _match = @event.Repeat.DayOfMonth;
+                _dayOfMonth = @event.Repeat.DayOfMonth.DayOfMonth;
+            }
+            else
+            {
+                throw new InvalidOperationException("Interval or Weekdays might be specified");
+            }
         }
 
         public Period[] Calculate()
@@ -130,8 +147,8 @@ internal static class RepeatEventCalculator
             var eventStart = _from.AddDays(-1).AddMinutes(_match.TimeOfTheDayUtcMinutes);
 
             return (Match(Weekday.From(_from.DayOfWeek).Previous()) || Match(_from.AddDays(-1).Day)) &&
-                   _match.OvernightDurationMinutes.HasValue &&
-                   _from.TotalMinutesFromStartOfTheDayUtc() < _match.OvernightDurationMinutes &&
+                   _match.OvernightMinutes().HasValue &&
+                   _from.TotalMinutesFromStartOfTheDayUtc() < _match.OvernightMinutes() &&
                    IsEffective(eventStart) &&
                    InRange(eventStart);
         }
@@ -146,7 +163,7 @@ internal static class RepeatEventCalculator
         {
             var eventStart = _from.StartOfTheDayUtc().AddMinutes(_match.TimeOfTheDayUtcMinutes);
             return (Match(Weekday.From(_from.DayOfWeek)) || Match(_from.Day))
-                   && _from.TotalMinutesFromStartOfTheDayUtc() < _match.SameDayLastTime
+                   && _from.TotalMinutesFromStartOfTheDayUtc() < _match.SameDayLastTime()
                    && IsEffective(eventStart)
                    && InRange(eventStart);
         }
@@ -188,7 +205,14 @@ internal static class RepeatEventCalculator
             return RepeatEventCalculator.InRange(_from, _to, start, _match.DurationMinutes);
         }
 
-        private bool Match(Weekday weekday) => _match.Weekdays.Contains(weekday);
-        private bool Match(int dayOfMonth) => _match.DayOfMonth == new DayOfMonth(dayOfMonth);
+        private bool Match(Weekday weekday)
+        {
+            return _weekdays?.Contains(weekday) ?? false;
+        }
+
+        private bool Match(int dayOfMonth)
+        {
+            return _dayOfMonth == new DayOfMonth(dayOfMonth);
+        }
     }
 }

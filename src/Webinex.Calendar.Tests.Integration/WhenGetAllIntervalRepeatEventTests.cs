@@ -17,10 +17,10 @@ public class WhenGetAllIntervalRepeatEventTests : IntegrationTestsBase
             durationMinutes: (int)TimeSpan.FromMinutes(30).TotalMinutes,
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetAllAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(2).AddMilliseconds(1));
+        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(2).AddMinutes(1));
         events.Length.Should().Be(3);
     }
 
@@ -34,10 +34,10 @@ public class WhenGetAllIntervalRepeatEventTests : IntegrationTestsBase
             durationMinutes: (int)TimeSpan.FromMinutes(30).TotalMinutes,
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetAllAsync(JAN1_2023_UTC.AddMinutes(30),
+        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC.AddMinutes(30),
             JAN1_2023_UTC.AddHours(1));
 
         events.Should().BeEmpty();

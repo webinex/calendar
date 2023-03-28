@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Webinex.Calendar.DataAccess;
+using Webinex.Calendar.Events;
 
 namespace Webinex.Calendar.Tests.EventFilterFactoryTests;
 using static CommonConstants;
@@ -7,7 +8,7 @@ using static CommonConstants;
 // ReSharper disable once InconsistentNaming
 public abstract class EventFilterFactoryTests_ExactDateEventBase
 {
-    protected abstract EventRowType Type { get; }
+    protected abstract EventType Type { get; }
     
     [Test]
     public void WhenMatch_ShouldBeOk()

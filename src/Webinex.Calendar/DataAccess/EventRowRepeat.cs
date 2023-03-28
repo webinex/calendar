@@ -1,4 +1,5 @@
-﻿using Webinex.Calendar.Repeats;
+﻿using Webinex.Calendar.Common;
+using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.DataAccess;
 
@@ -7,29 +8,121 @@ public class EventRowRepeat
     protected EventRowRepeat()
     {
     }
-    
-    public RepeatInterval? Interval { get; protected set; }
-    public EventRowRepeatMatch? Match { get; protected set; }
-    public EventRowRepeatType Type { get; protected set; }
 
-    public static EventRowRepeat From(Repeat repeat)
+    public EventRowRepeatType Type { get; protected set; }
+    public int? IntervalMinutes { get; protected set; }
+    public int DurationMinutes { get; protected set; }
+    public int TimeOfTheDayUtcMinutes { get; protected set; }
+    public int? OvernightDurationMinutes { get; protected set; }
+    public int? SameDayLastTime { get; protected set; }
+
+    public bool? Monday { get; protected set; }
+    public bool? Tuesday { get; protected set; }
+    public bool? Wednesday { get; protected set; }
+    public bool? Thursday { get; protected set; }
+    public bool? Friday { get; protected set; }
+    public bool? Saturday { get; protected set; }
+    public bool? Sunday { get; protected set; }
+
+    public int? DayOfMonth { get; protected set; }
+
+    private Weekday[] Weekdays => new[]
+    {
+        Monday == true ? Weekday.Monday : null,
+        Tuesday == true ? Weekday.Tuesday : null,
+        Wednesday == true ? Weekday.Wednesday : null,
+        Thursday == true ? Weekday.Thursday : null,
+        Friday == true ? Weekday.Friday : null,
+        Saturday == true ? Weekday.Saturday : null,
+        Sunday == true ? Weekday.Sunday : null,
+    }.Where(x => x != null).Cast<Weekday>().ToArray();
+
+    internal static EventRowRepeat From(Repeat repeat)
+    {
+        if (repeat.Interval != null)
+            return From(repeat.Interval);
+
+        if (repeat.DayOfMonth != null)
+            return From(repeat.DayOfMonth);
+
+        if (repeat.Weekday != null)
+            return From(repeat.Weekday);
+
+        throw new ArgumentException(nameof(repeat));
+    }
+
+    private static EventRowRepeat From(RepeatInterval repeat)
     {
         return new EventRowRepeat
         {
-            Interval = repeat.Interval,
-            Match = repeat.Match != null ? EventRowRepeatMatch.From(repeat.Match) : null,
-            Type = repeat.Match != null ? EventRowRepeatType.Match : EventRowRepeatType.Interval,
+            Type = EventRowRepeatType.Interval,
+            IntervalMinutes = repeat.IntervalMinutes,
+            DurationMinutes = repeat.DurationMinutes,
+            SameDayLastTime = repeat.SameDayLastTime(),
+            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
+            OvernightDurationMinutes = repeat.OvernightMinutes(),
         };
     }
 
-    public Repeat ToModel()
+    private static EventRowRepeat From(RepeatDayOfMonth repeat)
     {
-        if (Type == EventRowRepeatType.Interval)
-            return Repeat.NewInterval(Interval!);
-        
-        if (Type == EventRowRepeatType.Match)
-            return Repeat.NewMatch(Match!.ToModel());
+        return new EventRowRepeat
+        {
+            Type = EventRowRepeatType.DayOfMonth,
+            DurationMinutes = repeat.DurationMinutes,
+            SameDayLastTime = repeat.SameDayLastTime(),
+            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
+            OvernightDurationMinutes = repeat.OvernightMinutes(),
+            DayOfMonth = repeat.DayOfMonth.Value,
+        };
+    }
 
-        throw new InvalidOperationException($"Unexpected {nameof(EventRowRepeat)} to have all null repeats");
+    private static EventRowRepeat From(RepeatWeekday repeat)
+    {
+        return new EventRowRepeat
+        {
+            Type = EventRowRepeatType.Weekday,
+            DurationMinutes = repeat.DurationMinutes,
+            SameDayLastTime = repeat.SameDayLastTime(),
+            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
+            OvernightDurationMinutes = repeat.OvernightMinutes(),
+            Monday = repeat.Weekdays.Contains(Weekday.Monday),
+            Tuesday = repeat.Weekdays.Contains(Weekday.Tuesday),
+            Wednesday = repeat.Weekdays.Contains(Weekday.Wednesday),
+            Thursday = repeat.Weekdays.Contains(Weekday.Thursday),
+            Friday = repeat.Weekdays.Contains(Weekday.Friday),
+            Saturday = repeat.Weekdays.Contains(Weekday.Saturday),
+            Sunday = repeat.Weekdays.Contains(Weekday.Sunday),
+        };
+    }
+
+    internal Repeat ToModel(OpenPeriodMinutesSince1990 period)
+    {
+        return Type switch
+        {
+            EventRowRepeatType.Interval => ToIntervalModel(period),
+            EventRowRepeatType.Weekday => ToWeekdayModel(),
+            EventRowRepeatType.DayOfMonth => ToDayOfMonthModel(),
+            _ => throw new InvalidOperationException($"Unknown type {Type:G}"),
+        };
+    }
+
+    internal Repeat ToIntervalModel(OpenPeriodMinutesSince1990 period)
+    {
+        return Repeat.NewInterval(
+            period.ToOpenPeriod().Start,
+            period.ToOpenPeriod().End,
+            IntervalMinutes!.Value,
+            DurationMinutes);
+    }
+
+    internal Repeat ToWeekdayModel()
+    {
+        return Repeat.NewWeekday(TimeOfTheDayUtcMinutes, DurationMinutes, Weekdays);
+    }
+
+    internal Repeat ToDayOfMonthModel()
+    {
+        return Repeat.NewDayOfMonth(TimeOfTheDayUtcMinutes, DurationMinutes, new DayOfMonth(DayOfMonth!.Value));
     }
 }

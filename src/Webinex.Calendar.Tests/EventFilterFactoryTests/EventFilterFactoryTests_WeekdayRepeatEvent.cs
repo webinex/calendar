@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using Webinex.Calendar.Common;
 using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.Tests.EventFilterFactoryTests;

@@ -2,7 +2,7 @@
 
 namespace Webinex.Calendar.Tests.Integration.Setups;
 
-public class EventData : ValueObject, ICloneable
+public class EventData : Equatable, ICloneable
 {
     protected EventData()
     {

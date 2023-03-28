@@ -1,17 +1,17 @@
 ﻿<Project>
-    <PropertyGroup>
-        <Title>Webinex Calendar</Title>
-        <PackageVersion>1.0.0-rc1</PackageVersion>
-        <Authors>Webinex Dev</Authors>
-        <NoWarn>$(NoWarn);CS1591;CS0660;CS0661</NoWarn>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-        <LangVersion>default</LangVersion>
-        <Nullable>disable</Nullable>
-        <Description>Easy to use calendar events management</Description>
-        <Copyright>Webinex Dev</Copyright>
-        <PackageProjectUrl>https://github.com/webinex/calendar</PackageProjectUrl>
-        <License>https://github.com/webinex/calendar/LICENSE.txt</License>
-        <RepositoryUrl>https://github.com/webinex/calendar</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-    </PropertyGroup>
+  <PropertyGroup>
+    <Title>Webinex Calendar</Title>
+    <PackageVersion>1.0.0-rc2</PackageVersion>
+    <Authors>Webinex Dev</Authors>
+    <NoWarn>$(NoWarn);CS1591;CS0660;CS0661</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>default</LangVersion>
+    <Nullable>disable</Nullable>
+    <Description>Easy to use calendar events management</Description>
+    <Copyright>Webinex Dev</Copyright>
+    <PackageProjectUrl>https://github.com/webinex/calendar</PackageProjectUrl>
+    <License>https://github.com/webinex/calendar/LICENSE.txt</License>
+    <RepositoryUrl>https://github.com/webinex/calendar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
 </Project>

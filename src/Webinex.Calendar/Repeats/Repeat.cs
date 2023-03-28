@@ -2,16 +2,21 @@
 
 namespace Webinex.Calendar.Repeats;
 
-public class Repeat : ValueObject
+public class Repeat : Equatable
 {
     protected Repeat()
     {
     }
 
     public RepeatInterval? Interval { get; protected set; }
-    public RepeatMatch? Match { get; protected set; }
+    public RepeatWeekday? Weekday { get; protected set; }
+    public RepeatDayOfMonth? DayOfMonth { get; protected set; }
 
-    public static Repeat NewInterval(DateTimeOffset start, DateTimeOffset? end, int intervalMinutes, int durationMinutes)
+    public static Repeat NewInterval(
+        DateTimeOffset start,
+        DateTimeOffset? end,
+        int intervalMinutes,
+        int durationMinutes)
     {
         return new Repeat
         {
@@ -27,29 +32,48 @@ public class Repeat : ValueObject
         };
     }
 
-    public static Repeat NewMatch(
+    public static Repeat NewWeekday(
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
-        Weekday[] weekdays,
-        DayOfMonth? dayOfMonth)
+        Weekday[] weekdays)
     {
         return new Repeat
         {
-            Match = RepeatMatch.New(timeOfTheDayUtcMinutes, durationMinutes, weekdays, dayOfMonth),
+            Weekday = RepeatWeekday.New(timeOfTheDayUtcMinutes, durationMinutes, weekdays),
         };
     }
 
-    public static Repeat NewMatch(RepeatMatch match)
+    public static Repeat NewWeekday(RepeatWeekday weekday)
     {
         return new Repeat
         {
-            Match = match,
+            Weekday = weekday,
+        };
+    }
+
+    public static Repeat NewDayOfMonth(
+        int timeOfTheDayUtcMinutes,
+        int durationMinutes,
+        DayOfMonth dayOfMonth)
+    {
+        return new Repeat
+        {
+            DayOfMonth = RepeatDayOfMonth.New(timeOfTheDayUtcMinutes, durationMinutes, dayOfMonth),
+        };
+    }
+
+    public static Repeat NewDayOfMonth(RepeatDayOfMonth repeat)
+    {
+        return new Repeat
+        {
+            DayOfMonth = repeat,
         };
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Interval;
-        yield return Match;
+        yield return Weekday;
+        yield return DayOfMonth;
     }
 }

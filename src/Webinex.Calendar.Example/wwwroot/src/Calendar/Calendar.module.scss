@@ -1,0 +1,147 @@
+$borderColor: #eee;
+$paddingX: 1.7142857rem;
+$paddingY: 1.142857rem;
+$fontColor: rgba(0, 0, 0, 0.75);
+
+.container {
+  position: relative;
+}
+
+.addBtn {
+  position: absolute;
+  right: 60px;
+  bottom: 60px;
+  z-index: 3;
+
+  padding: 0;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  font-weight: 600;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
+  span {
+    font-size: 20px;
+    line-height: 1;
+  }
+}
+
+.calendar {
+  border: 1px solid $borderColor;
+
+  :global(.rbc-header) {
+    border-bottom: none;
+    padding: 4px;
+  }
+
+  :global(.rbc-today) {
+    background: none;
+  }
+
+  :global(.rbc-button-link) {
+    width: 100%;
+    height: 100%;
+  }
+
+  :global(.rbc-time-content) {
+    border-top: 1px solid $borderColor;
+  }
+
+  :global(.rbc-timeslot-group) {
+    min-height: 70px;
+    :global(.rbc-time-slot) {
+      border-top: none;
+    }
+  }
+
+  :global(.rbc-time-gutter.rbc-time-column) {
+    :nth-of-type(1) {
+      padding-top: 6px;
+    }
+    :global(.rbc-timeslot-group) {
+      border-bottom: none;
+    }
+  }
+
+  :global(.rbc-day-slot .rbc-events-container) {
+    margin-right: 1px;
+  }
+
+  :global(.rbc-allday-cell) {
+    display: none;
+  }
+}
+
+.event {
+  z-index: 1;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+
+  &.time {
+    width: calc(100% - var(--x-offset) / 2 * 1px);
+    margin-left: calc(var(--x-offset) / 2 * 1px);
+    position: absolute;
+
+    &:focus {
+      z-index: 2;
+    }
+  }
+
+  .content {
+    font-size: 0.85rem;
+    height: 100%;
+    width: 100%;
+    padding: 8px;
+    overflow: hidden;
+    border-radius: 2px;
+    background-color: #b2dfdb;
+
+    .title {
+      font-weight: 600;
+    }
+
+    .time {
+      font-weight: 400px;
+      padding-top: 5px;
+    }
+
+    .moreIcon {
+      font-size: 1rem;
+    }
+  }
+}
+
+.toolbar {
+  padding: $paddingY $paddingX;
+  border-right: 1px solid $borderColor;
+  border-left: 1px solid $borderColor;
+
+  .today {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px !important;
+  }
+
+  .range {
+    line-height: 1.3em;
+
+    .navigation :global(.anticon) {
+      color: var(--ant-primary-color);
+      font-size: 1.3em !important;
+    }
+
+    .label {
+      font-size: 20px;
+      font-weight: 600;
+      min-width: 300px;
+      display: inline-block;
+      text-align: center;
+    }
+  }
+
+  :global(.ant-menu-horizontal) {
+    border-bottom: none !important;
+    margin-bottom: calc(#{'-#{$paddingY} - 5px'});
+  }
+}

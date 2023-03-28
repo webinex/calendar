@@ -3,5 +3,13 @@
 }
 
 .App .Calendar {
-  height: 1500px
+  height: calc(100vh - 6rem)
+}
+
+.w-100 {
+  width: 100% !important;
+}
+
+.mb-0 {
+  margin-bottom: 0 !important;
 }
