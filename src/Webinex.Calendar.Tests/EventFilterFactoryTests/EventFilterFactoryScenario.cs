@@ -6,7 +6,6 @@ using Webinex.Calendar.Common;
 using Webinex.Calendar.DataAccess;
 using Webinex.Calendar.Events;
 using Webinex.Calendar.Filters;
-using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.Tests.EventFilterFactoryTests;
 
@@ -26,6 +25,34 @@ public class EventFilterFactoryScenario
         return WithOneTimeEvent(Guid.NewGuid().ToString(), start, duration);
     }
 
+    public EventFilterFactoryScenario WithDayOfMonthRepeatEvent(
+        string timeOfTheDay,
+        string duration,
+        int dayOfMonth)
+    {
+        return WithDayOfMonthRepeatEvent(Guid.NewGuid().ToString(), timeOfTheDay, duration, dayOfMonth);
+    }
+
+    public EventFilterFactoryScenario WithDayOfMonthRepeatEvent(
+        string tag,
+        string timeOfTheDay,
+        string duration,
+        int dayOfMonth)
+    {
+        var @event = RecurrentEvent<TestEventData>.NewDayOfMonth(
+            Constants.J1_1990,
+            null,
+            (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
+            (int)TimeSpan.Parse(duration).TotalMinutes,
+            new DayOfMonth(dayOfMonth),
+            new TestEventData());
+        var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventType.RecurrentEvent,
+            EventRowRepeat.From(@event.Repeat), null, @event.Data, null, false);
+
+        Add(tag, row);
+        return this;
+    }
+
     public EventFilterFactoryScenario WithWeekdayRepeatEvent(
         string timeOfTheDay,
         string duration,
@@ -40,15 +67,14 @@ public class EventFilterFactoryScenario
         string duration,
         params Weekday[] weekdays)
     {
-        var @event = RecurrentEvent<TestEventData>.NewMatch(
+        var @event = RecurrentEvent<TestEventData>.NewWeekday(
+            Constants.J1_1990,
+            null,
             (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
             (int)TimeSpan.Parse(duration).TotalMinutes,
             weekdays,
-            null,
-            DateTimeOffset.MinValue,
-            null,
             new TestEventData());
-        var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventRowType.RecurrentEvent,
+        var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventType.RecurrentEvent,
             EventRowRepeat.From(@event.Repeat), null, @event.Data, null, false);
 
         Add(tag, row);
@@ -76,7 +102,7 @@ public class EventFilterFactoryScenario
             (int)TimeSpan.Parse(duration).TotalMinutes,
             new TestEventData());
 
-        var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventRowType.RecurrentEvent,
+        var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventType.RecurrentEvent,
             EventRowRepeat.From(@event.Repeat), null, @event.Data, null, false);
 
         Add(tag, row);
@@ -85,14 +111,14 @@ public class EventFilterFactoryScenario
 
     public EventFilterFactoryScenario WithOneTimeEvent(string tag, DateTimeOffset start, string duration)
     {
-        var @event = OneTimeEvent<TestEventData>.New(start, start.Add(duration), new TestEventData());
+        var @event = OneTimeEvent<TestEventData>.New(new Period(start, start.Add(duration)), new TestEventData());
         Add(tag, EventRow.From(@event));
 
         return this;
     }
 
     public EventFilterFactoryScenario WithExactDateEvent(
-        EventRowType type,
+        EventType type,
         DateTimeOffset start,
         string duration)
     {
@@ -101,7 +127,7 @@ public class EventFilterFactoryScenario
 
     public EventFilterFactoryScenario WithExactDateEvent(
         string tag,
-        EventRowType type,
+        EventType type,
         DateTimeOffset start,
         string duration)
     {
@@ -111,17 +137,17 @@ public class EventFilterFactoryScenario
         return this;
     }
 
-    private EventRow<TestEventData> MapExactDateEvent(EventRowType type, DateTimeOffset start, string duration)
+    private EventRow<TestEventData> MapExactDateEvent(EventType type, DateTimeOffset start, string duration)
     {
         switch (type)
         {
-            case EventRowType.OneTimeEvent:
+            case EventType.OneTimeEvent:
             {
-                var @event = OneTimeEvent<TestEventData>.New(start, start.Add(duration), new TestEventData());
+                var @event = OneTimeEvent<TestEventData>.New(new Period(start, start.Add(duration)), new TestEventData());
                 return EventRow.From(@event);
             }
 
-            case EventRowType.RecurrentEventState:
+            case EventType.RecurrentEventState:
             {
                 return EventRow<TestEventData>.NewRecurrentEventState(Guid.NewGuid(), start, start.Add(duration),
                     new TestEventData(), null, false);

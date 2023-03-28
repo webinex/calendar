@@ -2,7 +2,7 @@
 
 namespace Webinex.Calendar.Repeats;
 
-public class RepeatInterval : ValueObject
+public class RepeatInterval : Equatable, IRepeatBase
 {
     protected RepeatInterval()
     {
@@ -10,16 +10,24 @@ public class RepeatInterval : ValueObject
 
     public long StartSince1990Minutes { get; protected set; }
     public long? EndSince1990Minutes { get; protected set; }
-    public int DurationMinutes { get; protected set; }
     public int IntervalMinutes { get; protected set; }
+    public int TimeOfTheDayUtcMinutes => Start().ToUtc().TotalMinutesFromStartOfTheDayUtc();
+    public int DurationMinutes { get; protected set; }
 
-    public DateTimeOffset Start() => Constants.J1_1990.AddMinutes(StartSince1990Minutes);
+    public DateTimeOffset Start()
+    {
+        return Constants.J1_1990.AddMinutes(StartSince1990Minutes);
+    }
 
-    public static RepeatInterval New(DateTimeOffset start, DateTimeOffset? end, int intervalMinutes, int durationMinutes)
+    public static RepeatInterval New(
+        DateTimeOffset start,
+        DateTimeOffset? end,
+        int intervalMinutes,
+        int durationMinutes)
     {
         if (start.Second > 0 || start.Millisecond > 0)
             throw new ArgumentException("Might not contain seconds and milliseconds", nameof(start));
-        
+
         if (end.HasValue && (end.Value.Second > 0 || end.Value.Millisecond > 0))
             throw new ArgumentException("Might not contain seconds and milliseconds", nameof(end));
 

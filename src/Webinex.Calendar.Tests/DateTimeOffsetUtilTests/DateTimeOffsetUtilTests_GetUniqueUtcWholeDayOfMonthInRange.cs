@@ -2,6 +2,7 @@
 using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
+using Webinex.Calendar.Common;
 
 namespace Webinex.Calendar.Tests.DateTimeOffsetUtilTests;
 

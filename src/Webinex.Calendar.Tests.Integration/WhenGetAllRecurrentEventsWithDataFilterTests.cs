@@ -17,10 +17,10 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
             durationMinutes: 30,
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetAllAsync(
+        var events = await Calendar.GetCalculatedAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NAME"));
@@ -38,13 +38,13 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
             durationMinutes: 30,
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        await Calendar.AddRecurrentStateAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
+        await Calendar.Recurrent.AddDataAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetAllAsync(
+        var events = await Calendar.GetCalculatedAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NEW_NAME"));
@@ -62,13 +62,13 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
             durationMinutes: 30,
             new EventData("NAME"));
 
-        await Calendar.AddRecurrentEventAsync(@event);
+        await Calendar.Recurrent.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        await Calendar.AddRecurrentStateAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
+        await Calendar.Recurrent.AddDataAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetAllAsync(
+        var events = await Calendar.GetCalculatedAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NAME"));

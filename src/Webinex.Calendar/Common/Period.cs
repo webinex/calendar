@@ -1,11 +1,11 @@
 ﻿namespace Webinex.Calendar.Common;
 
-public class Period : ValueObject
+public class Period : Equatable
 {
     protected Period()
     {
     }
-    
+
     public Period(DateTimeOffset start, DateTimeOffset end)
     {
         if (end < start)
@@ -18,7 +18,10 @@ public class Period : ValueObject
     public DateTimeOffset Start { get; protected set; }
     public DateTimeOffset End { get; protected set; }
 
-    public Period ToUtc() => new(Start.ToUtc(), End.ToUtc());
+    public Period ToUtc()
+    {
+        return new Period(Start.ToUtc(), End.ToUtc());
+    }
 
     public static bool operator ==(Period? left, Period? right)
     {

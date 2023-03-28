@@ -1,11 +1,11 @@
 ﻿namespace Webinex.Calendar.Common;
 
-public class OpenPeriod : ValueObject
+public class OpenPeriod : Equatable
 {
     protected OpenPeriod()
     {
     }
-    
+
     public OpenPeriod(DateTimeOffset start, DateTimeOffset? end)
     {
         Start = start;
@@ -23,13 +23,18 @@ public class OpenPeriod : ValueObject
     public Period ToPeriod()
     {
         if (!End.HasValue)
+        {
             throw new InvalidOperationException(
                 $"Unable to convert {nameof(OpenPeriod)} to {nameof(Period)}. {nameof(End)} unset");
+        }
 
         return new Period(Start, End.Value);
     }
 
-    public OpenPeriod ToUtc() => new OpenPeriod(Start.ToUtc(), End?.ToUtc());
+    public OpenPeriod ToUtc()
+    {
+        return new OpenPeriod(Start.ToUtc(), End?.ToUtc());
+    }
 
     public static bool operator ==(OpenPeriod? left, OpenPeriod? right)
     {

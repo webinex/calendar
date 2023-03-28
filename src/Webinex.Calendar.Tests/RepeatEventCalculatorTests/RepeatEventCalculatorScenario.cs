@@ -18,11 +18,10 @@ public class RepeatEventCalculatorScenario
     {
         _event = new RecurrentEvent<object>(
             Guid.NewGuid(),
-            Repeat.NewMatch(
+            Repeat.NewWeekday(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
-                weekdays,
-                null),
+                weekdays),
             new OpenPeriod(DateTimeOffset.MinValue, null), new object());
 
         return this;
@@ -35,10 +34,9 @@ public class RepeatEventCalculatorScenario
     {
         _event = new RecurrentEvent<object>(
             Guid.NewGuid(),
-            Repeat.NewMatch(
+            Repeat.NewDayOfMonth(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
-                Array.Empty<Weekday>(),
                 new DayOfMonth(dayOfMonth)),
             new OpenPeriod(DateTimeOffset.MinValue, null), new object());
 
@@ -68,9 +66,7 @@ public class RepeatEventCalculatorScenario
         if (_event == null || _range == null)
             throw new InvalidOperationException();
 
-        return _event.Repeat.Interval != null
-            ? RepeatEventCalculator.Interval(_event, _range.Start, _range.End!.Value)
-            : RepeatEventCalculator.Matches(_event, _range.Start, _range.End!.Value);
+        return RepeatEventCalculator.Matches(_event, _range.Start, _range.End!.Value);
     }
 
     public void ToBeEquivalent(params Period[] periods)

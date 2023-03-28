@@ -3,5 +3,6 @@
 public enum EventRowRepeatType
 {
     Interval,
-    Match,
+    Weekday,
+    DayOfMonth,
 }

@@ -22,9 +22,9 @@ public class IntegrationTestsBase
 
         services
             .AddScoped<TestDbContext>(_ => new TestDbContext())
-            .AddScoped<ICalendarDbContext<EventData>>(x => x.GetRequiredService<TestDbContext>())
-            .AddSingleton<IAskyFieldMap<EventData>>(new EventDataAskyFieldMap())
-            .AddCalendar<EventData>();
+            .AddCalendar<EventData>(x => x
+                .AddDbContext<TestDbContext>()
+                .AddAskyFieldMap<EventDataAskyFieldMap>());
 
         _services = services.BuildServiceProvider();
 
@@ -96,8 +96,8 @@ create table {SCHEMA_NAME}.{EVENTS_TABLE_NAME}
 (
     Id                                    uniqueidentifier not null
         constraint PK_Events primary key,
-    Effective_Start                       datetimeoffset   not null,
-    Effective_End                         datetimeoffset   null,
+    Effective_Start                       bigint           not null,
+    Effective_End                         bigint           null,
     Type                                  int              not null,
     RecurrentEventId                      uniqueidentifier null
         constraint FK_{EVENTS_TABLE_NAME}_RecurrentEventId_{EVENTS_TABLE_NAME}_Id foreign key references {SCHEMA_NAME}.{EVENTS_TABLE_NAME} (Id),
@@ -106,23 +106,19 @@ create table {SCHEMA_NAME}.{EVENTS_TABLE_NAME}
     MoveTo_End                            datetimeoffset   null,
 
     Repeat_Type                           int              null,
-    Repeat_Interval_StartSince1990Minutes bigint           null,
-    Repeat_Interval_EndSince1990Minutes   bigint           null,
-    Repeat_Interval_IntervalMinutes       int              null,
-    Repeat_Interval_DurationMinutes       int              null,
-
-    Repeat_Match_TimeOfTheDayUtcMinutes   int              null,
-    Repeat_Match_DurationMinutes          int              null,
-    Repeat_Match_OvernightDurationMinutes int              null,
-    Repeat_Match_SameDayLastTime          int              null,
-    Repeat_Match_Monday                   bit              null,
-    Repeat_Match_Tuesday                  bit              null,
-    Repeat_Match_Wednesday                bit              null,
-    Repeat_Match_Thursday                 bit              null,
-    Repeat_Match_Friday                   bit              null,
-    Repeat_Match_Saturday                 bit              null,
-    Repeat_Match_Sunday                   bit              null,
-    Repeat_Match_DayOfMonth               int              null,
+    Repeat_IntervalMinutes                int              null,
+    Repeat_DurationMinutes                int              null,
+    Repeat_TimeOfTheDayUtcMinutes         int              null,
+    Repeat_OvernightDurationMinutes       int              null,
+    Repeat_SameDayLastTime                int              null,
+    Repeat_Monday                         bit              null,
+    Repeat_Tuesday                        bit              null,
+    Repeat_Wednesday                      bit              null,
+    Repeat_Thursday                       bit              null,
+    Repeat_Friday                         bit              null,
+    Repeat_Saturday                       bit              null,
+    Repeat_Sunday                         bit              null,
+    Repeat_DayOfMonth                     int              null,
     Data_Name                             nvarchar(200)    not null,
 )
 ";

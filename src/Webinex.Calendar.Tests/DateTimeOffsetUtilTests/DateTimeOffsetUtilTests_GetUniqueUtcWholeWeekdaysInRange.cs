@@ -1,6 +1,7 @@
 ﻿using System;
 using FluentAssertions;
 using NUnit.Framework;
+using Webinex.Calendar.Common;
 using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.Tests.DateTimeOffsetUtilTests;
@@ -12,13 +13,13 @@ public class DateTimeOffsetUtilTests_GetUniqueUtcWholeWeekdaysInRange
     public void WhenFromGtTo_ShouldThrow()
     {
         Assert.Throws<ArgumentException>(() =>
-            DateTimeOffsetUtil.GetUniqueWeekdaysInRange(JAN1_2023_UTC.AddMilliseconds(1), JAN1_2023_UTC));
+            DateTimeOffsetUtil.GetUniqueUtcWholeWeekdaysInRange(JAN1_2023_UTC.AddMilliseconds(1), JAN1_2023_UTC));
     }
 
     [Test]
     public void WhenEqual_ShouldBeEmpty()
     {
-        var result = DateTimeOffsetUtil.GetUniqueDayOfMonthInRange(JAN1_2023_UTC, JAN1_2023_UTC);
+        var result = DateTimeOffsetUtil.GetUniqueUtcWholeWeekdaysInRange(JAN1_2023_UTC, JAN1_2023_UTC);
         result.Length.Should().Be(0);
     }
 

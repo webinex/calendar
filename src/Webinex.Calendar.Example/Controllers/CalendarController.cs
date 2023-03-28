@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
-using Webinex.Calendar.Repeats;
 
 namespace Webinex.Calendar.Example.Controllers;
 
@@ -20,76 +20,74 @@ public class CalendarController : ControllerBase
     [HttpGet]
     public async Task<Event<EventData>[]> GetAllAsync(DateTimeOffset from, DateTimeOffset to)
     {
-        return await _calendar.GetAllAsync(from, to);
+        return await _calendar.GetCalculatedAsync(from, to);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateEventAsync([FromBody] CreateEventRequest request)
+    public async Task<IActionResult> CreateEventAsync([FromBody] CreateEventRequestDto request)
     {
-        if (request.OneTime != null)
-        {
-            var @event = OneTimeEvent<EventData>.New(request.OneTime.Start, request.OneTime.End, request.OneTime.Data);
-            await _calendar.AddOneTimeEventAsync(@event);
-        }
-        else if (request.Interval != null)
-        {
-            var @event = RecurrentEvent<EventData>.NewInterval(request.Interval.Start, null, request.Interval.IntervalMinutes,
-                request.Interval.DurationMinutes, request.Interval.Data);
-            await _calendar.AddRecurrentEventAsync(@event);
-        }
-        else if (request.Match != null)
-        {
-            var @event =
-                RecurrentEvent<EventData>.NewMatch(request.Match.TimeOfTheDayUtcMinutes, request.Match.DurationMinutes,
-                    request.Match.Weekdays.Select(x => new Weekday(x)).ToArray(),
-                    request.Match.DayOfMonth != null ? new DayOfMonth(request.Match.DayOfMonth.Value) : null,
-                    request.Match.Start,
-                    request.Match.End,
-                    request.Match.Data);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-            await _calendar.AddRecurrentEventAsync(@event);
-        }
-        else
-        {
-            return BadRequest();
-        }
+        if (request.IsRecurrentEvent())
+            await _calendar.Recurrent.AddAsync(request.ToRecurrentEvent());
 
-
+        if (request.IsOneTimeEvent())
+            await _calendar.OneTime.AddAsync(request.ToOneTimeEvent());
+        
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
 
-    public class CreateEventRequest
+    [HttpPut("time")]
+    public async Task<IActionResult> EditEventTimeAsync([FromBody] EditEventTimeRequestDto request)
     {
-        public CreateOneTimeEventPayload? OneTime { get; set; }
-        public CreateMatchEventPayload? Match { get; set; }
-        public CreateIntervalEventPayload? Interval { get; set; }
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var recurrentEvent = await _calendar.Recurrent.GetAsync(request.RecurrentEventId);
+        await _calendar.Recurrent.MoveAsync(recurrentEvent!, request.EventStart,
+            new Period(request.MoveToStart, request.MoveToEnd));
+        await _dbContext.SaveChangesAsync();
+
+        return Ok();
     }
 
-    public class CreateOneTimeEventPayload
+    [HttpPut("cancel/appearance")]
+    public async Task<IActionResult> CancelEventAsync([FromBody] CancelRecurrentEventAppearanceRequestDto request)
     {
-        public DateTimeOffset Start { get; set; }
-        public DateTimeOffset End { get; set; }
-        public EventData Data { get; set; } = null!;
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var recurrentEvent = await _calendar.Recurrent.GetAsync(request.RecurrentEventId);
+        await _calendar.Recurrent.CancelAppearanceAsync(recurrentEvent!, request.EventStart);
+        await _dbContext.SaveChangesAsync();
+        return Ok();
     }
 
-    public class CreateMatchEventPayload
+    [HttpPut("cancel/one-time")]
+    public async Task<IActionResult> CancelEventAsync([FromBody] CancelOneTimeEventRequestDto request)
     {
-        public DateTimeOffset Start { get; set; }
-        public DateTimeOffset? End { get; set; }
-        public int TimeOfTheDayUtcMinutes { get; set; }
-        public int DurationMinutes { get; set; }
-        public string[] Weekdays { get; set; } = null!;
-        public int? DayOfMonth { get; set; }
-        public EventData Data { get; set; } = null!;
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var @event = await _calendar.OneTime.GetAsync(request.Id);
+        if (@event == null)
+            return NotFound(request.Id);
+        
+        await _calendar.OneTime.CancelAsync(@event);
+        await _dbContext.SaveChangesAsync();
+        return Ok();
     }
 
-    public class CreateIntervalEventPayload
+    [HttpPut("cancel/recurrent")]
+    public async Task<IActionResult> CancelEventAsync([FromBody] CancelRecurrentEventRequestDto request)
     {
-        public DateTimeOffset Start { get; set; }
-        public DateTimeOffset? End { get; set; }
-        public int DurationMinutes { get; set; }
-        public int IntervalMinutes { get; set; }
-        public EventData Data { get; set; } = null!;
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        await _calendar.Recurrent.CancelAsync(request.RecurrentEventId, request.Since);
+        await _dbContext.SaveChangesAsync();
+        return Ok();
     }
 }
