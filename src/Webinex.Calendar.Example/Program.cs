@@ -3,7 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Webinex.Calendar;
 using Webinex.Calendar.Example;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    WebRootPath = "wwwroot/build",
+});
 
 // Add services to the container.
 
@@ -17,7 +20,7 @@ builder.Services.AddCalendar<EventData>(x => x
     .AddDbContext<ExampleDbContext>());
 
 builder.Services.AddDbContext<ExampleDbContext>(x =>
-    x.UseSqlServer("Server=localhost;Database=webinex_calendar;Trusted_Connection=True;TrustServerCertificate=True;"));
+    x.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 var app = builder.Build();
 
@@ -26,6 +29,16 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+if (!builder.Environment.IsDevelopment())
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+
+    app.UseWhen(
+        x => !x.Request.Path.StartsWithSegments("/api") && x.Request.Path != "/health",
+        o => o.UseSpa(_ => { }));
 }
 
 app.UseAuthorization();

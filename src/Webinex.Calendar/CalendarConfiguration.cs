@@ -28,6 +28,10 @@ internal class CalendarConfiguration : ICalendarConfiguration
         _services.AddScoped(
             typeof(ICalendar<>).MakeGenericType(EventDataType),
             typeof(Calendar<>).MakeGenericType(EventDataType));
+
+        _services.AddScoped(
+            typeof(IRecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType),
+            typeof(RecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType));
     }
 
     private Type CalendarDbContextType => typeof(ICalendarDbContext<>).MakeGenericType(EventDataType);

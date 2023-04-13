@@ -86,13 +86,16 @@ internal static class EventFilterFactory
             var rangeMinutes = _to.TotalMinutesSince1990() - _from.TotalMinutesSince1990();
 
             return x => x.Repeat!.Type == EventRowRepeatType.Interval && (
-                x.Effective.Start >= _from.TotalMinutesSince1990()
-                || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
-                    (!x.Effective.End.HasValue ||
-                     x.Effective.End.Value >= _to.TotalMinutesSince1990() ||
-                     x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
-                || (_from.TotalMinutesSince1990() - x.Effective.Start) %
-                x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes);
+                            x.Effective.Start >= _from.TotalMinutesSince1990()
+                            || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
+                                (!x.Effective.End.HasValue ||
+                                 x.Effective.End.Value >= _to.TotalMinutesSince1990() ||
+                                 x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
+                            || (_from.TotalMinutesSince1990() - x.Effective.Start) %
+                            x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes)
+                        
+                        // TODO: s.skalaban check predicate
+                        || (((_from.TotalMinutesSince1990() - x.Effective.Start) % x.Repeat.IntervalMinutes) + x.Repeat.IntervalMinutes < _to.TotalMinutesSince1990());
         }
     }
 }

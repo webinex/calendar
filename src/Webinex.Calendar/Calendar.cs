@@ -14,11 +14,16 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 {
     private readonly ICalendarDbContext<TData> _dbContext;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
+    private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
 
-    public Calendar(ICalendarDbContext<TData> dbContext, IAskyFieldMap<TData> dataFieldMap)
+    public Calendar(
+        ICalendarDbContext<TData> dbContext,
+        IAskyFieldMap<TData> dataFieldMap,
+        IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap)
     {
         _dbContext = dbContext;
         _dataFieldMap = dataFieldMap;
+        _recurrentEventRowAskyFieldMap = recurrentEventRowAskyFieldMap;
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -74,6 +79,26 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.GetManyAsync(IEnumerable<Guid> ids)
     {
         var result = await GetManyAsync(ids);
+        return result.Select(x => x.ToRecurrentEvent()).ToArray();
+    }
+
+    async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.GetManyAsync(
+        FilterRule filter,
+        SortRule? sortRule,
+        PagingRule? pagingRule)
+    {
+        filter = filter.Replace(new RecurrentEventFilterRuleReplaceDateTimeOffsetVisitor());
+
+        var queryable = _dbContext.Events.Where(x => x.Type == EventType.RecurrentEvent)
+            .Where(_recurrentEventRowAskyFieldMap, filter);
+
+        if (sortRule != null)
+            queryable = queryable.SortBy(_recurrentEventRowAskyFieldMap, sortRule);
+
+        if (pagingRule != null)
+            queryable = queryable.PageBy(pagingRule);
+
+        var result = await queryable.ToArrayAsync();
         return result.Select(x => x.ToRecurrentEvent()).ToArray();
     }
 
@@ -230,9 +255,8 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task IRecurrentEventCalendarInstance<TData>.DeleteAsync(Guid recurrentEventId)
     {
         var rows = await _dbContext.Events.Where(x =>
-                x.Type == EventType.RecurrentEvent || (x.Type == EventType.RecurrentEventState &&
-                                                       (x.Id == recurrentEventId ||
-                                                        x.RecurrentEventId == recurrentEventId)))
+                (x.Type == EventType.RecurrentEvent && x.Id == recurrentEventId) ||
+                (x.Type == EventType.RecurrentEventState && x.RecurrentEventId == recurrentEventId))
             .ToArrayAsync();
 
         var recurrentEvent = rows.FirstOrDefault(x => x.Id == recurrentEventId)?.ToRecurrentEvent();
@@ -240,6 +264,18 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             throw CodedException.NotFound(recurrentEventId);
 
         _dbContext.Events.RemoveRange(rows);
+    }
+
+    Task IRecurrentEventCalendarInstance<TData>.DeleteAsync(RecurrentEvent<TData> @event)
+    {
+        return (this as IRecurrentEventCalendarInstance<TData>).DeleteAsync(@event.Id);
+    }
+
+    async Task IRecurrentEventCalendarInstance<TData>.DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events)
+    {
+        // TODO: s.skalaban, avoid cycle
+        foreach (var @event in events)
+            await (this as IRecurrentEventCalendarInstance<TData>).DeleteAsync(@event.Id);
     }
 
     async Task<RecurrentEventState<TData>?> IRecurrentEventCalendarInstance<TData>.GetStateAsync(

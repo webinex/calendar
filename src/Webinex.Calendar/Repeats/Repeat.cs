@@ -12,6 +12,16 @@ public class Repeat : Equatable
     public RepeatWeekday? Weekday { get; protected set; }
     public RepeatDayOfMonth? DayOfMonth { get; protected set; }
 
+    public static Repeat New(Repeat repeat)
+    {
+        return new Repeat
+        {
+            Interval = repeat.Interval != null ? RepeatInterval.New(repeat.Interval) : null,
+            Weekday = repeat.Weekday != null ? RepeatWeekday.New(repeat.Weekday) : null,
+            DayOfMonth = repeat.DayOfMonth != null ? RepeatDayOfMonth.New(repeat.DayOfMonth) : null,
+        };
+    }
+
     public static Repeat NewInterval(
         DateTimeOffset start,
         DateTimeOffset? end,

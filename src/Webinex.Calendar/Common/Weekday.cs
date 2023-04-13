@@ -18,7 +18,7 @@ public class Weekday : Equatable
         Value = value;
     }
 
-    protected string Value { get; init; } = null!;
+    public string Value { get; protected init; } = null!;
 
     public static Weekday Monday => new() { Value = "Monday" };
     public static Weekday Tuesday => new() { Value = "Tuesday" };
