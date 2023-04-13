@@ -19,6 +19,17 @@ public class RepeatInterval : Equatable, IRepeatBase
         return Constants.J1_1990.AddMinutes(StartSince1990Minutes);
     }
 
+    public static RepeatInterval New(RepeatInterval value)
+    {
+        return new RepeatInterval
+        {
+            DurationMinutes = value.DurationMinutes,
+            IntervalMinutes = value.IntervalMinutes,
+            EndSince1990Minutes = value.EndSince1990Minutes,
+            StartSince1990Minutes = value.StartSince1990Minutes,
+        };
+    }
+
     public static RepeatInterval New(
         DateTimeOffset start,
         DateTimeOffset? end,

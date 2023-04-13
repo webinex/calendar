@@ -1,4 +1,5 @@
-﻿using Webinex.Calendar.Common;
+﻿using Webinex.Asky;
+using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
 
 namespace Webinex.Calendar;
@@ -8,11 +9,14 @@ public interface IRecurrentEventCalendarInstance<TData>
 {
     Task<RecurrentEvent<TData>?> GetAsync(Guid id);
     Task<RecurrentEvent<TData>[]> GetManyAsync(IEnumerable<Guid> ids);
+    Task<RecurrentEvent<TData>[]> GetManyAsync(FilterRule filter, SortRule? sortRule = null, PagingRule? pagingRule = null);
     Task<RecurrentEvent<TData>> AddAsync(RecurrentEvent<TData> @event);
     Task MoveAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, Period moveTo);
     Task CancelAsync(Guid id, DateTimeOffset since);
     Task CancelAppearanceAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart);
     Task DeleteAsync(Guid id);
+    Task DeleteAsync(RecurrentEvent<TData> @event);
+    Task DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
 
     Task<RecurrentEventState<TData>?> GetStateAsync(RecurrentEventStateId id);
     Task<RecurrentEventState<TData>[]> GetManyStatesAsync(IEnumerable<RecurrentEventStateId> ids);

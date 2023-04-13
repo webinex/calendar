@@ -12,7 +12,16 @@ public class RepeatDayOfMonth : Equatable, IRepeatBase
     public int TimeOfTheDayUtcMinutes { get; protected set; }
     public int DurationMinutes { get; protected set; }
 
-
+    public static RepeatDayOfMonth New(RepeatDayOfMonth value)
+    {
+        return new RepeatDayOfMonth
+        {
+            DurationMinutes = value.DurationMinutes,
+            DayOfMonth = new DayOfMonth(value.DayOfMonth.Value),
+            TimeOfTheDayUtcMinutes = value.TimeOfTheDayUtcMinutes,
+        };
+    }
+    
     internal static RepeatDayOfMonth New(
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
