@@ -71,8 +71,6 @@ internal static class EventFilterFactory
         {
             Expression<Func<EventRow<TData>, bool>> @base = x => x.Type == EventType.RecurrentEvent;
 
-            var weekdayMatch = new MatchWeekdayEventFilterFactory<TData>(_from, _to).Create();
-
             return Expressions.And(
                 @base,
                 Expressions.Or(
@@ -86,13 +84,17 @@ internal static class EventFilterFactory
             var rangeMinutes = _to.TotalMinutesSince1990() - _from.TotalMinutesSince1990();
 
             return x => x.Repeat!.Type == EventRowRepeatType.Interval && (
-                x.Effective.Start >= _from.TotalMinutesSince1990()
-                || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
-                    (!x.Effective.End.HasValue ||
-                     x.Effective.End.Value >= _to.TotalMinutesSince1990() ||
-                     x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
-                || (_from.TotalMinutesSince1990() - x.Effective.Start) %
-                x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes);
+                            x.Effective.Start >= _from.TotalMinutesSince1990()
+                            || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
+                                (!x.Effective.End.HasValue ||
+                                 x.Effective.End.Value >= _to.TotalMinutesSince1990() ||
+                                 x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
+                            || (_from.TotalMinutesSince1990() - x.Effective.Start) %
+                            x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes)
+
+                        // TODO: s.skalaban check predicate
+                        || (((x.Effective.Start - _from.TotalMinutesSince1990()) % x.Repeat.IntervalMinutes) +
+                            x.Repeat.IntervalMinutes + _from.TotalMinutesSince1990() < _to.TotalMinutesSince1990());
         }
     }
 }

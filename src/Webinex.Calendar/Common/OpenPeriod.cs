@@ -20,6 +20,15 @@ public class OpenPeriod : Equatable
     public DateTimeOffset Start { get; protected set; }
     public DateTimeOffset? End { get; protected set; }
 
+    public static OpenPeriod New(OpenPeriod value)
+    {
+        return new OpenPeriod
+        {
+            Start = value.Start,
+            End = value.End,
+        };
+    }
+
     public Period ToPeriod()
     {
         if (!End.HasValue)

@@ -5,9 +5,12 @@ namespace Webinex.Calendar.Example;
 
 public class ExampleDbContext : DbContext, ICalendarDbContext<EventData>
 {
-    public ExampleDbContext(DbContextOptions<ExampleDbContext> options)
+    private readonly IConfiguration _configuration;
+    
+    public ExampleDbContext(DbContextOptions<ExampleDbContext> options, IConfiguration configuration)
         : base(options)
     {
+        _configuration = configuration;
     }
 
     public DbSet<EventRow<EventData>> Events { get; protected set; } = null!;
@@ -16,7 +19,7 @@ public class ExampleDbContext : DbContext, ICalendarDbContext<EventData>
     {
         model.Entity<EventRow<EventData>>(row =>
         {
-            row.ToTable("Events");
+            row.ToTable(_configuration["Db:EventsTableName"]!, _configuration["Db:SchemaName"]!);
             row.HasKey(x => x.Id);
 
             row
