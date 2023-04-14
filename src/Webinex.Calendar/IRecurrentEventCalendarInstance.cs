@@ -11,6 +11,7 @@ public interface IRecurrentEventCalendarInstance<TData>
     Task<RecurrentEvent<TData>[]> GetManyAsync(IEnumerable<Guid> ids);
     Task<RecurrentEvent<TData>[]> GetManyAsync(FilterRule filter, SortRule? sortRule = null, PagingRule? pagingRule = null);
     Task<RecurrentEvent<TData>> AddAsync(RecurrentEvent<TData> @event);
+    Task<RecurrentEvent<TData>[]> AddRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
     Task MoveAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, Period moveTo);
     Task CancelAsync(Guid id, DateTimeOffset since);
     Task CancelAppearanceAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart);

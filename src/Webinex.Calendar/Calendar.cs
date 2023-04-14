@@ -87,7 +87,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         SortRule? sortRule,
         PagingRule? pagingRule)
     {
-        filter = filter.Replace(new RecurrentEventFilterRuleReplaceDateTimeOffsetVisitor());
+        filter = filter.Replace(new RecurrentEventFilterRuleVisitor());
 
         var queryable = _dbContext.Events.Where(x => x.Type == EventType.RecurrentEvent)
             .Where(_recurrentEventRowAskyFieldMap, filter);
@@ -180,9 +180,19 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task<RecurrentEvent<TData>> IRecurrentEventCalendarInstance<TData>.AddAsync(RecurrentEvent<TData> @event)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
-        var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective, @event.Data);
+        var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective, (TData)@event.Data.Clone());
         await _dbContext.Events.AddAsync(row);
         return @event;
+    }
+
+    async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.AddRangeAsync(IEnumerable<RecurrentEvent<TData>> events)
+    {
+        var that = (IRecurrentEventCalendarInstance<TData>)this;
+        var result = new LinkedList<RecurrentEvent<TData>>();
+        foreach (var @event in events)
+            result.AddLast(await that.AddAsync(@event));
+
+        return result.ToArray();
     }
 
     async Task IRecurrentEventCalendarInstance<TData>.MoveAsync(

@@ -36,6 +36,13 @@ internal class RecurrentEventRowAskyFieldMap<TData> : IRecurrentEventRowAskyFiel
                 "id" => x => x.Id,
                 "effective.start" => x => x.Effective.Start,
                 "effective.end" => x => x.Effective.End!,
+                "repeat.weekday.monday" => x => x.Repeat!.Monday!,
+                "repeat.weekday.tuesday" => x => x.Repeat!.Tuesday!,
+                "repeat.weekday.wednesday" => x => x.Repeat!.Wednesday!,
+                "repeat.weekday.thursday" => x => x.Repeat!.Thursday!,
+                "repeat.weekday.friday" => x => x.Repeat!.Friday!,
+                "repeat.weekday.saturday" => x => x.Repeat!.Saturday!,
+                "repeat.weekday.sunday" => x => x.Repeat!.Sunday!,
                 _ => null,
             };
         }
