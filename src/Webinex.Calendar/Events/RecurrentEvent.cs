@@ -82,7 +82,7 @@ public class RecurrentEvent<TData> : RecurrentEvent
         };
     }
 
-    internal Event<TData>[] ToEvents(
+    public Event<TData>[] ToEvents(
         DateTimeOffset from,
         DateTimeOffset to,
         IEnumerable<RecurrentEventState<TData>> eventStates)
@@ -129,9 +129,20 @@ public class RecurrentEvent<TData> : RecurrentEvent
             .ToArray();
     }
 
-    private Period[] ToPeriods(DateTimeOffset from, DateTimeOffset to)
+    public Period[] ToPeriods(DateTimeOffset from, DateTimeOffset to)
     {
         return RepeatEventCalculator.Matches(this, from, to);
+    }
+
+    public Period? LastPeriod(DateTimeOffset until)
+    {
+        return RepeatEventCalculator.Matches(this, Effective.Start, until).MaxBy(x => x.Start);
+    }
+
+    public Period? MatchPeriod(DateTimeOffset eventStart)
+    {
+        return RepeatEventCalculator.Matches(this, eventStart, eventStart.AddMinutes(1))
+            .FirstOrDefault(x => x.Start == eventStart);
     }
 
     public int DurationMinutes()
