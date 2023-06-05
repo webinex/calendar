@@ -15,15 +15,18 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     private readonly ICalendarDbContext<TData> _dbContext;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
+    private readonly IRecurrentEventStateAskyFieldMap<TData> _recurrentEventStateAskyFieldMap;
 
     public Calendar(
         ICalendarDbContext<TData> dbContext,
         IAskyFieldMap<TData> dataFieldMap,
-        IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap)
+        IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap,
+        IRecurrentEventStateAskyFieldMap<TData> recurrentEventStateAskyFieldMap)
     {
         _dbContext = dbContext;
         _dataFieldMap = dataFieldMap;
         _recurrentEventRowAskyFieldMap = recurrentEventRowAskyFieldMap;
+        _recurrentEventStateAskyFieldMap = recurrentEventStateAskyFieldMap;
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -297,11 +300,16 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         return result?.ToRecurrentEventState();
     }
 
-    async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetAllStatesAsync(
-        Guid recurrentEventId)
+    async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetAllStatesAsync(FilterRule filter)
     {
+        filter = filter.Replace(new DateTimeOffsetToMinutesSince1990FilterRuleVisitor(new[]
+        {
+            "period.start",
+            "period.end",
+        }));
+
         var queryable = _dbContext.Events.AsQueryable()
-            .Where(e => e.RecurrentEventId == recurrentEventId)
+            .Where(_recurrentEventStateAskyFieldMap, filter)
             .Where(x => x.Type == EventType.RecurrentEventState)
             .Where(e => !e.Cancelled);
 
