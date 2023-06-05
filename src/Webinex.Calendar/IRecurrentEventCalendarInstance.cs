@@ -20,6 +20,7 @@ public interface IRecurrentEventCalendarInstance<TData>
     Task DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
 
     Task<RecurrentEventState<TData>?> GetStateAsync(RecurrentEventStateId id);
+    Task<RecurrentEventState<TData>[]> GetAllStatesAsync(Guid recurrentEventId);
     Task<RecurrentEventState<TData>[]> GetManyStatesAsync(IEnumerable<RecurrentEventStateId> ids);
     Task<Event<TData>> SaveDataAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, TData data);
     Task<Event<TData>> AddDataAsync(RecurrentEvent<TData> @event, DateTimeOffset start, TData data);

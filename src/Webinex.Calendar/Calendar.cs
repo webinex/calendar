@@ -180,12 +180,14 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task<RecurrentEvent<TData>> IRecurrentEventCalendarInstance<TData>.AddAsync(RecurrentEvent<TData> @event)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
-        var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective, (TData)@event.Data.Clone());
+        var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective,
+            (TData)@event.Data.Clone());
         await _dbContext.Events.AddAsync(row);
         return @event;
     }
 
-    async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.AddRangeAsync(IEnumerable<RecurrentEvent<TData>> events)
+    async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.AddRangeAsync(
+        IEnumerable<RecurrentEvent<TData>> events)
     {
         var that = (IRecurrentEventCalendarInstance<TData>)this;
         var result = new LinkedList<RecurrentEvent<TData>>();
@@ -293,6 +295,19 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         var result = await FindRecurrentEventStateAsync(id.RecurrentEventId, id.EventStart);
         return result?.ToRecurrentEventState();
+    }
+
+    async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetAllStatesAsync(
+        Guid recurrentEventId)
+    {
+        var queryable = _dbContext.Events.AsQueryable()
+            .Where(e => e.RecurrentEventId == recurrentEventId)
+            .Where(x => x.Type == EventType.RecurrentEventState)
+            .Where(e => !e.Cancelled);
+
+        var rows = await queryable.ToArrayAsync();
+
+        return rows.Select(x => x.ToRecurrentEventState()).ToArray();
     }
 
     async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetManyStatesAsync(
