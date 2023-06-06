@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using Webinex.Asky;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.DataAccess;
@@ -336,11 +337,35 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
                 new RecurrentEventStateId(x.RecurrentEventId!.Value, Constants.J1_1990.AddMinutes(x.Effective.Start))))
             .ToArray();
 
-        var surplusRows = await _dbContext.Events.Where(x =>
-                x.Type == EventType.RecurrentEventState && surplus.Any(id =>
-                    id.RecurrentEventId == x.RecurrentEventId &&
-                    id.EventStart.TotalMinutesSince1990() == x.Effective.Start))
-            .ToArrayAsync();
+        if (!surplus.Any())
+        {
+            return local.Select(x => x.ToRecurrentEventState()).ToArray();
+        }
+
+        var queryable = _dbContext.Events.Where(x => x.Type == EventType.RecurrentEventState);
+
+        if (surplus.Length == 1)
+        {
+            var first = surplus.First();
+            queryable = queryable
+                .Where(x => first.RecurrentEventId == x.RecurrentEventId &&
+                            first.EventStart.TotalMinutesSince1990() == x.Effective.Start);
+        }
+        else
+        {
+            // EF doesn't support this
+            // surplus.Any(id => id.RecurrentEventId == x.RecurrentEventId &&
+            // id.EventStart.TotalMinutesSince1990() == x.Effective.Start)
+
+            var filters = FilterRule.Or(
+                surplus.Select(e => FilterRule.And(
+                    FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
+                    FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
+
+            queryable = queryable.Where(_recurrentEventRowAskyFieldMap, filters);
+        }
+
+        var surplusRows = await queryable.ToArrayAsync();
 
         return local.Concat(surplusRows).Select(x => x.ToRecurrentEventState()).ToArray();
     }

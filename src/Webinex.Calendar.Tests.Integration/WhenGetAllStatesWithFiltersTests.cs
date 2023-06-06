@@ -41,12 +41,12 @@ public class WhenGetAllStatesWithFiltersTests : IntegrationTestsBase
             FilterRule.Eq("period.end", firstAppearance.End),
             FilterRule.Eq("moveTo.start", moveFirstToPeriod.Start),
             FilterRule.Eq("moveTo.end", moveFirstToPeriod.End)
-            );
+        );
         var states = await Calendar.Recurrent.GetAllStatesAsync(filters);
 
         states.Length.Should().Be(1);
     }
-    
+
     [Test]
     public async Task FilterOnlyByRecurrentEventId_ShouldReturnCorrectResult()
     {
@@ -82,7 +82,7 @@ public class WhenGetAllStatesWithFiltersTests : IntegrationTestsBase
 
         states.Length.Should().Be(2);
     }
-    
+
     [SetUp]
     public new void SetUp()
     {
