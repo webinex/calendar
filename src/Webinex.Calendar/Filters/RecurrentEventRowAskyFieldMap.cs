@@ -34,6 +34,7 @@ internal class RecurrentEventRowAskyFieldMap<TData> : IRecurrentEventRowAskyFiel
             return fieldId switch
             {
                 "id" => x => x.Id,
+                "recurrentEventId" => x => x.RecurrentEventId!,
                 "effective.start" => x => x.Effective.Start,
                 "effective.end" => x => x.Effective.End!,
                 "repeat.weekday.monday" => x => x.Repeat!.Monday!,

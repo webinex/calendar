@@ -20,6 +20,23 @@ public interface IRecurrentEventCalendarInstance<TData>
     Task DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
 
     Task<RecurrentEventState<TData>?> GetStateAsync(RecurrentEventStateId id);
+    
+    /// <summary>
+    /// Returns all event states according to filters
+    /// </summary>
+    /// <param name="filter">
+    /// Supported filters:
+    /// <list type="bullet">
+    /// <item><see cref="TData"/> data</item>
+    /// <item><see cref="Guid"/> recurrentEventId</item>
+    /// <item><see cref="DateTimeOffset"/> period.start</item>
+    /// <item><see cref="DateTimeOffset"/> period.end</item>
+    /// <item><see cref="DateTimeOffset"/> moveTo.start</item>
+    /// <item><see cref="DateTimeOffset"/> moveTo.end</item>
+    /// </list>
+    /// </param>
+    Task<RecurrentEventState<TData>[]> GetAllStatesAsync(FilterRule filter);
+    
     Task<RecurrentEventState<TData>[]> GetManyStatesAsync(IEnumerable<RecurrentEventStateId> ids);
     Task<Event<TData>> SaveDataAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, TData data);
     Task<Event<TData>> AddDataAsync(RecurrentEvent<TData> @event, DateTimeOffset start, TData data);
