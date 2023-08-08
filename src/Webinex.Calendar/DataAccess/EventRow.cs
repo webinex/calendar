@@ -51,6 +51,8 @@ public class EventRow<TData>
     public Period? MoveTo { get; protected set; }
     internal EventRow<TData>? RecurrentEvent { get; set; }
 
+    internal EventRowId GetEventRowId() => new EventRowId(Type, Id, RecurrentEventId, Effective.ToOpenPeriod().Start);
+
     internal void SetOneTimeEventData(TData data)
     {
         if (Type != EventType.OneTimeEvent)
@@ -174,6 +176,24 @@ public class EventRow<TData>
             throw new InvalidOperationException(
                 $"Unable to convert event of type {Type:G} to {targetType}");
         }
+    }
+
+    internal static Expression<Func<EventRow<TData>, bool>> InPeriodExpression(Period period)
+    {
+        var min = period.Start.TotalMinutesSince1990();
+        var max = period.End.TotalMinutesSince1990();
+
+        return x => (x.Effective.Start < max && (!x.Effective.End.HasValue || x.Effective.End.Value > min))
+                    || (x.MoveTo!.Start < period.End && x.MoveTo.End > period.Start);
+    }
+
+    internal bool InPeriod(Period period)
+    {
+        var min = period.Start.TotalMinutesSince1990();
+        var max = period.End.TotalMinutesSince1990();
+
+        return (Effective.Start < max && (!Effective.End.HasValue || Effective.End.Value > min))
+                    || (MoveTo != null && MoveTo!.Start < period.End && MoveTo.End > period.Start);
     }
 
     internal static Expression<Func<EventRow<TData>, bool>> Selector(Weekday weekday)

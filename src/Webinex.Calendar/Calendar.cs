@@ -1,6 +1,6 @@
-﻿using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Webinex.Asky;
+using Webinex.Calendar.Caches;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.DataAccess;
 using Webinex.Calendar.Events;
@@ -17,17 +17,20 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
     private readonly IRecurrentEventStateAskyFieldMap<TData> _recurrentEventStateAskyFieldMap;
+    private readonly ICache<TData> _cache;
 
     public Calendar(
         ICalendarDbContext<TData> dbContext,
         IAskyFieldMap<TData> dataFieldMap,
         IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap,
-        IRecurrentEventStateAskyFieldMap<TData> recurrentEventStateAskyFieldMap)
+        IRecurrentEventStateAskyFieldMap<TData> recurrentEventStateAskyFieldMap,
+        ICache<TData> cache)
     {
         _dbContext = dbContext;
         _dataFieldMap = dataFieldMap;
         _recurrentEventRowAskyFieldMap = recurrentEventRowAskyFieldMap;
         _recurrentEventStateAskyFieldMap = recurrentEventStateAskyFieldMap;
+        _cache = cache;
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -50,6 +53,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         var row = EventRow<TData>.NewEvent(@event.Period, @event.Data);
         await _dbContext.Events.AddAsync(row);
+        _cache.PushAdd(row);
         return @event;
     }
 
@@ -59,6 +63,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         var row = await FindRequiredAsync(@event.Id);
         row.SetOneTimeEventData(data);
+        _cache.PushUpdate(row);
         return row.ToOneTimeEvent();
     }
 
@@ -66,12 +71,14 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         var row = await FindRequiredAsync(@event.Id);
         _dbContext.Events.Remove(row);
+        _cache.PushDelete(row);
     }
 
     async Task IOneTimeEventCalendarInstance<TData>.CancelAsync(OneTimeEvent<TData> @event)
     {
         var row = await FindRequiredAsync(@event.Id, EventType.RecurrentEvent);
         row.Cancel();
+        _cache.PushUpdate(row);
     }
 
     async Task<RecurrentEvent<TData>?> IRecurrentEventCalendarInstance<TData>.GetAsync(Guid id)
@@ -113,9 +120,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         data = data ?? throw new ArgumentNullException(nameof(data));
-
-        // if (!@event.HasEventOnDate(date))
-        //     throw new ArgumentException("Recurrent event hasn't event on date", nameof(date));
+        AssertEventMightExist(@event, eventStart);
 
         var stateRow = await FindRecurrentEventStateAsync(@event.Id, eventStart);
 
@@ -124,10 +129,12 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             var eventEnd = eventStart.AddMinutes(@event.DurationMinutes());
             stateRow = EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart, eventEnd, data, null, false);
             await _dbContext.Events.AddAsync(stateRow);
+            _cache.PushAdd(stateRow);
         }
         else
         {
             stateRow.SetRecurrentEventData(data);
+            _cache.PushUpdate(stateRow);
         }
 
         return new Event<TData>(null, @event.Id, stateRow.Effective.ToPeriod(), data, false,
@@ -136,19 +143,18 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     async Task<Event<TData>> IRecurrentEventCalendarInstance<TData>.AddDataAsync(
         RecurrentEvent<TData> @event,
-        DateTimeOffset start,
+        DateTimeOffset eventStart,
         TData data)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         data = data ?? throw new ArgumentNullException(nameof(data));
-
-        // if (!@event.HasEventOnDate(date))
-        //     throw new ArgumentException("Recurrent event hasn't event on date", nameof(date));
+        AssertEventMightExist(@event, eventStart);
 
         var dataRow =
-            EventRow<TData>.NewRecurrentEventState(@event.Id, start, start.AddMinutes(@event.DurationMinutes()), data,
+            EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart, eventStart.AddMinutes(@event.DurationMinutes()), data,
                 null, false);
         await _dbContext.Events.AddAsync(dataRow);
+        _cache.PushAdd(dataRow);
 
         return new Event<TData>(null, @event.Id, dataRow.Effective.ToPeriod(), data, false,
             dataRow.MoveTo != null ? dataRow.Effective.ToPeriod() : null);
@@ -156,17 +162,16 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     async Task<Event<TData>> IRecurrentEventCalendarInstance<TData>.UpdateDataAsync(
         RecurrentEvent<TData> @event,
-        DateTimeOffset date,
+        DateTimeOffset eventStart,
         TData data)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         data = data ?? throw new ArgumentNullException(nameof(data));
+        AssertEventMightExist(@event, eventStart);
 
-        // if (!@event.HasEventOnDate(date))
-        //     throw new ArgumentException("Recurrent event hasn't event on date", nameof(date));
-
-        var dataRow = await FindRequiredRecurrentEventDataAsync(@event.Id, date);
+        var dataRow = await FindRequiredRecurrentEventStateAsync(@event.Id, eventStart);
         dataRow.SetRecurrentEventData(data);
+        _cache.PushUpdate(dataRow);
 
         return new Event<TData>(null, @event.Id, dataRow.Effective.ToPeriod(), data, false,
             dataRow.MoveTo != null ? dataRow.Effective.ToPeriod() : null);
@@ -174,11 +179,9 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     async Task IRecurrentEventCalendarInstance<TData>.DeleteStateAsync(RecurrentEventStateId id)
     {
-        var state = await FindRecurrentEventStateAsync(id.RecurrentEventId, id.EventStart);
-        if (state == null)
-            throw CodedException.NotFound(id);
-
+        var state = await FindRequiredRecurrentEventStateAsync(id.RecurrentEventId, id.EventStart);
         _dbContext.Events.Remove(state);
+        _cache.PushDelete(state);
     }
 
     async Task<RecurrentEvent<TData>> IRecurrentEventCalendarInstance<TData>.AddAsync(RecurrentEvent<TData> @event)
@@ -187,16 +190,16 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective,
             (TData)@event.Data.Clone());
         await _dbContext.Events.AddAsync(row);
+        _cache.PushAdd(row);
         return @event;
     }
 
     async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.AddRangeAsync(
         IEnumerable<RecurrentEvent<TData>> events)
     {
-        var that = (IRecurrentEventCalendarInstance<TData>)this;
         var result = new LinkedList<RecurrentEvent<TData>>();
         foreach (var @event in events)
-            result.AddLast(await that.AddAsync(@event));
+            result.AddLast(await Recurrent.AddAsync(@event));
 
         return result.ToArray();
     }
@@ -206,6 +209,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DateTimeOffset eventStart,
         Period moveTo)
     {
+        @event = @event ?? throw new ArgumentNullException(nameof(@event));
+        moveTo = moveTo ?? throw new ArgumentNullException(nameof(moveTo));
+        AssertEventMightExist(@event, eventStart);
+        
         var stateRow = await FindRecurrentEventStateAsync(@event.Id, eventStart);
 
         if (stateRow == null)
@@ -214,10 +221,12 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             stateRow = EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart, eventEnd,
                 (TData)@event.Data.Clone(), moveTo, false);
             await _dbContext.Events.AddAsync(stateRow);
+            _cache.PushAdd(stateRow);
         }
         else
         {
             stateRow.Move(moveTo);
+            _cache.PushUpdate(stateRow);
         }
     }
 
@@ -229,6 +238,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             throw CodedException.Invalid("Should be less than current end");
 
         row.Effective = new OpenPeriodMinutesSince1990(row.Effective.Start, since.TotalMinutesSince1990());
+        _cache.PushUpdate(row);
 
         var states = await _dbContext.Events.Where(x =>
                 x.Type == EventType.RecurrentEventState && x.RecurrentEventId == id &&
@@ -245,14 +255,19 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         {
             rowToCancel.Cancel();
         }
+        _cache.PushUpdate(cancel);
 
         _dbContext.Events.RemoveRange(remove);
+        _cache.PushDelete(remove);
     }
 
     async Task IRecurrentEventCalendarInstance<TData>.CancelAppearanceAsync(
         RecurrentEvent<TData> @event,
         DateTimeOffset eventStart)
     {
+        @event = @event ?? throw new ArgumentNullException(nameof(@event));
+        AssertEventMightExist(@event, eventStart);
+        
         var stateRow = await FindRecurrentEventStateAsync(@event.Id, eventStart);
 
         if (stateRow == null)
@@ -261,10 +276,12 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             stateRow = EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart, eventEnd,
                 (TData)@event.Data.Clone(), null, true);
             await _dbContext.Events.AddAsync(stateRow);
+            _cache.PushAdd(stateRow);
         }
         else
         {
             stateRow.Cancel();
+            _cache.PushUpdate(stateRow);
         }
     }
 
@@ -280,18 +297,19 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             throw CodedException.NotFound(recurrentEventId);
 
         _dbContext.Events.RemoveRange(rows);
+        _cache.PushDelete(rows);
     }
 
     Task IRecurrentEventCalendarInstance<TData>.DeleteAsync(RecurrentEvent<TData> @event)
     {
-        return (this as IRecurrentEventCalendarInstance<TData>).DeleteAsync(@event.Id);
+        return Recurrent.DeleteAsync(@event.Id);
     }
 
     async Task IRecurrentEventCalendarInstance<TData>.DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events)
     {
         // TODO: s.skalaban, avoid cycle
         foreach (var @event in events)
-            await (this as IRecurrentEventCalendarInstance<TData>).DeleteAsync(@event.Id);
+            await Recurrent.DeleteAsync(@event.Id);
     }
 
     async Task<RecurrentEventState<TData>?> IRecurrentEventCalendarInstance<TData>.GetStateAsync(
@@ -353,10 +371,6 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         }
         else
         {
-            // EF doesn't support this
-            // surplus.Any(id => id.RecurrentEventId == x.RecurrentEventId &&
-            // id.EventStart.TotalMinutesSince1990() == x.Effective.Start)
-
             var filters = FilterRule.Or(
                 surplus.Select(e => FilterRule.And(
                     FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
@@ -373,15 +387,11 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     public async Task<Event<TData>[]> GetCalculatedAsync(
         DateTimeOffset from,
         DateTimeOffset to,
-        FilterRule? dataFilterRule = null)
+        FilterRule? dataFilterRule = null,
+        QueryOptions queryOptions = QueryOptions.Db)
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-
-        var queryable = _dbContext.Events.AsQueryable()
-            .Where(EventFilterFactory.Create(from, to, dataFilter));
-
-        var rows = await queryable.ToArrayAsync();
-
+        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from, to, dataFilterRule, queryOptions);
         var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent).ToArray();
 
         var recurrentEventStates = rows
@@ -406,6 +416,31 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             result = result.Where(Expressions.Child<Event<TData>, TData>(x => x.Data, dataFilter).Compile()).ToArray();
 
         return result;
+    }
+
+    private async Task<EventRow<TData>[]> GetRowsFromCacheOrFallbackToDbContextAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        FilterRule? dataFilterRule = null,
+        QueryOptions queryOptions = QueryOptions.Db)
+    {
+        if (queryOptions == QueryOptions.TryCache && _cache.TryGetAll(from, to, dataFilterRule, out var rows))
+            return rows!.Value.ToArray();
+
+        return await GetRowsFromDbContextAsync(from, to, dataFilterRule);
+    }
+
+    private async Task<EventRow<TData>[]> GetRowsFromDbContextAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        FilterRule? dataFilterRule = null)
+    {
+        var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
+
+        var queryable = _dbContext.Events.AsQueryable()
+            .Where(EventFilterFactory.Create(from, to, dataFilter));
+
+        return await queryable.ToArrayAsync();
     }
 
     private async Task<EventRow<TData>?> FindAsync(Guid id, EventType? type = null)
@@ -436,7 +471,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             x.Effective.Start == dateTime.TotalMinutesSince1990());
     }
 
-    private async Task<EventRow<TData>> FindRequiredRecurrentEventDataAsync(Guid id, DateTimeOffset dateTime)
+    private async Task<EventRow<TData>> FindRequiredRecurrentEventStateAsync(Guid id, DateTimeOffset dateTime)
     {
         return await FindRecurrentEventStateAsync(id, dateTime) ?? throw CodedException.NotFound(new { id, dateTime });
     }
@@ -453,5 +488,12 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         var surplusRows = await _dbContext.Events.Where(x => surplus.Contains(x.Id)).ToArrayAsync();
 
         return local.Concat(surplusRows).ToArray();
+    }
+
+    private void AssertEventMightExist(RecurrentEvent<TData> @event, DateTimeOffset eventStart)
+    {
+        if (@event.MatchPeriod(eventStart) == null)
+            throw new ArgumentException($"Recurrent event {@event.Id} hasn't event on {eventStart:O}",
+                nameof(eventStart));
     }
 }

@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
     <PackageReference Include="Webinex.Asky" Version="1.2.0" />
     <PackageReference Include="Webinex.Coded" Version="1.0.0" />
   </ItemGroup>

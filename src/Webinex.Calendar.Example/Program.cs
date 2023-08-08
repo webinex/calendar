@@ -17,7 +17,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddCalendar<EventData>(x => x
-    .AddDbContext<ExampleDbContext>());
+    .AddDbContext<ExampleDbContext>()
+    .AddCache(TimeSpan.FromDays(30), TimeSpan.FromDays(3 * 30), TimeSpan.FromMinutes(15)));
 
 builder.Services.AddDbContext<ExampleDbContext>(x =>
     x.UseSqlServer(builder.Configuration.GetConnectionString("Default")));

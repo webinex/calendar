@@ -20,7 +20,7 @@ public class CalendarController : ControllerBase
     [HttpGet]
     public async Task<Event<EventData>[]> GetAllAsync(DateTimeOffset from, DateTimeOffset to)
     {
-        return await _calendar.GetCalculatedAsync(from, to);
+        return await _calendar.GetCalculatedAsync(from, to, queryOptions: QueryOptions.TryCache);
     }
 
     [HttpPost]
