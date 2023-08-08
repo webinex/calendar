@@ -9,5 +9,5 @@ public interface ICalendar<TData>
     IOneTimeEventCalendarInstance<TData> OneTime { get; }
     IRecurrentEventCalendarInstance<TData> Recurrent { get; }
 
-    Task<Event<TData>[]> GetCalculatedAsync(DateTimeOffset from, DateTimeOffset to, FilterRule? dataFilterRule = null);
+    Task<Event<TData>[]> GetCalculatedAsync(DateTimeOffset from, DateTimeOffset to, FilterRule? dataFilterRule = null, QueryOptions queryOptions = QueryOptions.Db);
 }

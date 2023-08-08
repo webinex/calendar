@@ -7,6 +7,11 @@ internal static class DateTimeOffsetExtensions
         return value.ToOffset(TimeSpan.Zero);
     }
 
+    public static DateTimeOffset StartOfMinute(this DateTimeOffset value)
+    {
+        return new DateTimeOffset(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0, 0, value.Offset);
+    }
+
     public static DateTimeOffset StartOfTheDayUtc(this DateTimeOffset value)
     {
         return new DateTimeOffset(value.ToUtc().Date, TimeSpan.Zero);

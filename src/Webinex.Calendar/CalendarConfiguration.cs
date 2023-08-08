@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Webinex.Asky;
+using Webinex.Calendar.Caches;
 using Webinex.Calendar.DataAccess;
 using Webinex.Calendar.Filters;
 
@@ -14,6 +16,7 @@ public interface ICalendarConfiguration
 
     ICalendarConfiguration AddDbContext<TDbContext>() where TDbContext : DbContext;
     ICalendarConfiguration AddAskyFieldMap<T>();
+    ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
 }
 
 internal class CalendarConfiguration : ICalendarConfiguration
@@ -32,7 +35,7 @@ internal class CalendarConfiguration : ICalendarConfiguration
         _services.AddScoped(
             typeof(IRecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType),
             typeof(RecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType));
-        
+
         _services.AddScoped(
             typeof(IRecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType),
             typeof(RecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType));
@@ -65,9 +68,35 @@ internal class CalendarConfiguration : ICalendarConfiguration
         return this;
     }
 
+    public ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick)
+    {
+        var cacheStoreType = typeof(CacheStore<>).MakeGenericType(EventDataType);
+
+        _services.AddSingleton(cacheStoreType);
+
+        _services.AddSingleton(
+            typeof(ICacheStore<>).MakeGenericType(EventDataType),
+            x => x.GetRequiredService(cacheStoreType));
+
+        _services.AddSingleton(
+            typeof(IHostedService),
+            x => x.GetRequiredService(cacheStoreType));
+
+        _services.AddScoped(
+            typeof(ICache<>).MakeGenericType(EventDataType),
+            typeof(Cache<>).MakeGenericType(EventDataType));
+
+        _services.AddSingleton(
+            typeof(CalendarCacheOptions<>).MakeGenericType(EventDataType),
+            CalendarCacheOptions.NewEnabled(EventDataType, lt, gte, tick));
+
+        return this;
+    }
+
     public void Complete()
     {
         AddEmptyAskyFieldMapIfNotConfigured();
+        AddNoCacheIfNotConfigured();
     }
 
     private void AddEmptyAskyFieldMapIfNotConfigured()
@@ -78,6 +107,18 @@ internal class CalendarConfiguration : ICalendarConfiguration
         {
             _services.AddSingleton(AskyFieldMapInterfaceType,
                 typeof(EmptyAskyFieldMap<>).MakeGenericType(EventDataType));
+        }
+    }
+
+    private void AddNoCacheIfNotConfigured()
+    {
+        var service = _services.Any(x => x.ServiceType == typeof(ICache<>).MakeGenericType(EventDataType));
+
+        if (!service)
+        {
+            _services.AddSingleton(
+                typeof(ICache<>).MakeGenericType(EventDataType),
+                typeof(NoCache<>).MakeGenericType(EventDataType));
         }
     }
 
