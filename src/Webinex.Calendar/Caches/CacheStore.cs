@@ -108,7 +108,7 @@ internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TDat
         {
             foreach (var cacheEvent in events)
             {
-                if (cacheEvent.Value.InPeriod(_period!))
+                if (!cacheEvent.Value.InPeriod(_period!))
                     continue;
 
                 if (!cacheEvent.TryApply(_rowById))
