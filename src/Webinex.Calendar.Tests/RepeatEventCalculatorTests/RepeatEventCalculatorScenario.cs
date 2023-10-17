@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using FluentAssertions;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
@@ -66,7 +67,7 @@ public class RepeatEventCalculatorScenario
         if (_event == null || _range == null)
             throw new InvalidOperationException();
 
-        return RepeatEventCalculator.Matches(_event, _range.Start, _range.End!.Value);
+        return RepeatEventCalculator.Matches(_event, _range.Start, _range.End!.Value).ToArray();
     }
 
     public void ToBeEquivalent(params Period[] periods)

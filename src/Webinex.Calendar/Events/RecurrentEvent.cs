@@ -129,9 +129,27 @@ public class RecurrentEvent<TData> : RecurrentEvent
             .ToArray();
     }
 
+    /// <summary>
+    /// Computes all occurrences periods for this <see cref="RecurrentEvent"/>.
+    /// Also returns all partially aligned occurrences (occurrence.start &lt; from and occurrence.end &gt; from)
+    /// <br/>
+    /// INFINITELY returns events if <see cref="RecurrentEvent"/> has no end effective date
+    /// </summary>
+    /// <param name="from">Start of period</param>
+    public IEnumerable<Period> ToPeriods(DateTimeOffset from)
+    {
+        return RepeatEventCalculator.Matches(this, from, null);
+    }
+
+    /// <summary>
+    /// Computes all occurrences periods for this <see cref="RecurrentEvent"/>.
+    /// Also returns all partially aligned occurrences
+    /// </summary>
+    /// <param name="from">Start of period</param>
+    /// <param name="to">End of period</param>
     public Period[] ToPeriods(DateTimeOffset from, DateTimeOffset to)
     {
-        return RepeatEventCalculator.Matches(this, from, to);
+        return RepeatEventCalculator.Matches(this, from, to).ToArray();
     }
 
     public Period? LastPeriod(DateTimeOffset until)

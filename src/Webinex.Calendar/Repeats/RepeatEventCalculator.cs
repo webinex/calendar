@@ -5,27 +5,24 @@ namespace Webinex.Calendar.Repeats;
 
 internal static class RepeatEventCalculator
 {
-    public static Period[] Matches(RecurrentEvent @event, DateTimeOffset start, DateTimeOffset end)
+    public static IEnumerable<Period> Matches(RecurrentEvent @event, DateTimeOffset start, DateTimeOffset? end)
     {
         return @event.Repeat.Interval != null
             ? Interval(@event, start, end)
-            : new MatchCalculator(@event, start.ToUtc(), end.ToUtc()).Calculate();
+            : new MatchCalculator(@event, start.ToUtc(), end?.ToUtc()).Calculate();
     }
 
-    private static Period[] Interval(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset to)
+    private static IEnumerable<Period> Interval(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset? to)
     {
-        var date = FindFirstMatchingIntervalStart(@event, from);
-        var periods = new LinkedList<Period>();
+        var durationMinutes = @event.Repeat.Interval!.DurationMinutes;
+        var eventStart = FindFirstMatchingIntervalStart(@event, from);
 
-        while (IsEffective(@event, date) && InRange(from, to, date, @event.Repeat.Interval!.DurationMinutes))
+        while (IsEffective(@event, eventStart) && InRange(from, to, eventStart, durationMinutes))
         {
-            var eventStart = date;
-            var eventEnd = eventStart.AddMinutes(@event.Repeat.Interval!.DurationMinutes);
-            periods.AddLast(new Period(eventStart, eventEnd));
-            date = date.AddMinutes(@event.Repeat.Interval.IntervalMinutes);
+            var eventEnd = eventStart.AddMinutes(durationMinutes);
+            yield return new Period(eventStart, eventEnd);
+            eventStart = eventStart.AddMinutes(@event.Repeat.Interval.IntervalMinutes);
         }
-
-        return periods.ToArray();
     }
 
     private static bool IsEffective(RecurrentEvent @event, DateTimeOffset start)
@@ -34,9 +31,9 @@ internal static class RepeatEventCalculator
                (!@event.Effective.End.HasValue || @event.Effective.End.Value > start);
     }
 
-    private static bool InRange(DateTimeOffset from, DateTimeOffset to, DateTimeOffset start, int durationMinutes)
+    private static bool InRange(DateTimeOffset from, DateTimeOffset? to, DateTimeOffset start, int durationMinutes)
     {
-        return start < to && start.AddMinutes(durationMinutes) > from;
+        return (!to.HasValue || start < to) && start.AddMinutes(durationMinutes) > from;
     }
 
     private static DateTimeOffset FindFirstMatchingIntervalStart(RecurrentEvent @event, DateTimeOffset from)
@@ -49,7 +46,7 @@ internal static class RepeatEventCalculator
             return Constants.J1_1990.AddMinutes(interval.StartSince1990Minutes);
 
         var previous = from.AddMinutes(-1 * (sinceStartOfInterval % interval.IntervalMinutes));
-        return previous.AddMinutes(interval.DurationMinutes) >= from
+        return previous.AddMinutes(interval.DurationMinutes) > from
             ? previous
             : previous.AddMinutes(interval.IntervalMinutes);
     }
@@ -59,14 +56,13 @@ internal static class RepeatEventCalculator
         private readonly RecurrentEvent _event;
         private readonly IRepeatBase _match;
         private readonly DateTimeOffset _from;
-        private readonly DateTimeOffset _to;
+        private readonly DateTimeOffset? _to;
         private readonly Weekday[]? _weekdays;
         private readonly DayOfMonth? _dayOfMonth;
-        private readonly LinkedList<Period> _matches = new();
 
         private DateTimeOffset? _reference;
 
-        public MatchCalculator(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset to)
+        public MatchCalculator(RecurrentEvent @event, DateTimeOffset from, DateTimeOffset? to)
         {
             _event = @event;
             _from = from;
@@ -89,17 +85,14 @@ internal static class RepeatEventCalculator
             }
         }
 
-        public Period[] Calculate()
+        public IEnumerable<Period> Calculate()
         {
             _reference = null;
-            _matches.Clear();
 
             while (Next())
             {
-                _matches.AddLast(new Period(_reference!.Value, _reference.Value.AddMinutes(_match.DurationMinutes)));
+                yield return new Period(_reference!.Value, _reference.Value.AddMinutes(_match.DurationMinutes));
             }
-
-            return _matches.ToArray();
         }
 
         private bool Next()
@@ -171,7 +164,7 @@ internal static class RepeatEventCalculator
         private DateTimeOffset? FindNextMatch(DateTimeOffset value)
         {
             var nextDay = value;
-            while (nextDay < _to)
+            while (!_to.HasValue || nextDay < _to)
             {
                 if (!Match(Weekday.From(nextDay.DayOfWeek)) && !Match(nextDay.Day))
                 {
@@ -180,7 +173,7 @@ internal static class RepeatEventCalculator
                 }
 
                 var match = nextDay.AddMinutes(_match.TimeOfTheDayUtcMinutes);
-                if (match >= _to || (_event.Effective.End.HasValue && match > _event.Effective.End))
+                if (!_to.HasValue || match >= _to || (_event.Effective.End.HasValue && match > _event.Effective.End))
                     break;
 
                 if (!IsEffective(match))
