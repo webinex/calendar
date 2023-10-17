@@ -173,7 +173,7 @@ internal static class RepeatEventCalculator
                 }
 
                 var match = nextDay.AddMinutes(_match.TimeOfTheDayUtcMinutes);
-                if (!_to.HasValue || match >= _to || (_event.Effective.End.HasValue && match > _event.Effective.End))
+                if ((_to.HasValue && match >= _to) || (_event.Effective.End.HasValue && match > _event.Effective.End))
                     break;
 
                 if (!IsEffective(match))
