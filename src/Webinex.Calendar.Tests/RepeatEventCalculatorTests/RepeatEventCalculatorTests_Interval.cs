@@ -19,12 +19,12 @@ public class RepeatEventCalculatorTests_Interval
     [Test]
     public void WhenRangeStartAtTheEndOfIntervalDuration_ButEndsAfterOneInterval_ShouldBeOk()
     {
-        var jan2_2023_UTC = JAN1_2023_UTC.AddDays(1);
+        var jan2Of2023Utc = JAN1_2023_UTC.AddDays(1);
         
         new RepeatEventCalculatorScenario()
-            .WithRange(JAN1_2023_UTC.Add("6:30"), jan2_2023_UTC.Add("6:30"))
+            .WithRange(JAN1_2023_UTC.Add("6:30"), jan2Of2023Utc.Add("6:30"))
             .WithInterval(JAN1_2023_UTC.Add("5:30"), interval: "1:00:00:00", duration: "1:00")
-            .ToBeEquivalent(new Period(jan2_2023_UTC.Add("5:30"), jan2_2023_UTC.Add("6:30")));
+            .ToBeEquivalent(new Period(jan2Of2023Utc.Add("5:30"), jan2Of2023Utc.Add("6:30")));
     }
 
     [Test]

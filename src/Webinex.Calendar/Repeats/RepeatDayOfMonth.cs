@@ -9,8 +9,9 @@ public class RepeatDayOfMonth : Equatable, IRepeatBase
     }
 
     public DayOfMonth DayOfMonth { get; protected set; } = null!;
-    public int TimeOfTheDayUtcMinutes { get; protected set; }
+    public int TimeOfTheDayInMinutes { get; protected set; }
     public int DurationMinutes { get; protected set; }
+    public TimeZoneInfo TimeZone { get; protected set; } = null!;
 
     public static RepeatDayOfMonth New(RepeatDayOfMonth value)
     {
@@ -18,14 +19,16 @@ public class RepeatDayOfMonth : Equatable, IRepeatBase
         {
             DurationMinutes = value.DurationMinutes,
             DayOfMonth = new DayOfMonth(value.DayOfMonth.Value),
-            TimeOfTheDayUtcMinutes = value.TimeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = value.TimeOfTheDayInMinutes,
+            TimeZone = value.TimeZone,
         };
     }
     
     internal static RepeatDayOfMonth New(
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
-        DayOfMonth dayOfMonth)
+        DayOfMonth dayOfMonth,
+        TimeZoneInfo timeZone)
     {
         if (durationMinutes > TimeSpan.FromDays(1).TotalMinutes)
             throw new InvalidOperationException("Duration cannot be more than 1 day");
@@ -40,7 +43,8 @@ public class RepeatDayOfMonth : Equatable, IRepeatBase
         {
             DayOfMonth = dayOfMonth,
             DurationMinutes = durationMinutes,
-            TimeOfTheDayUtcMinutes = timeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = timeOfTheDayUtcMinutes,
+            TimeZone = timeZone,
         };
     }
 
@@ -56,8 +60,9 @@ public class RepeatDayOfMonth : Equatable, IRepeatBase
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {
-        yield return TimeOfTheDayUtcMinutes;
+        yield return TimeOfTheDayInMinutes;
         yield return DurationMinutes;
         yield return DayOfMonth;
+        yield return TimeZone;
     }
 }

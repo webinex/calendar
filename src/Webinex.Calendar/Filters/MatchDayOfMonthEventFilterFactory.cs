@@ -70,7 +70,7 @@ public class MatchDayOfMonthEventFilterFactory<TData>
         if (_from.Date == _to.Date)
         {
             expression = Expressions.And(expression,
-                x => _to.TotalMinutesFromStartOfTheDayUtc() > x.Repeat!.TimeOfTheDayUtcMinutes);
+                x => _to.TotalMinutesFromStartOfTheDayUtc() > x.Repeat!.TimeOfTheDayInMinutes);
         }
 
         return expression;
@@ -82,7 +82,7 @@ public class MatchDayOfMonthEventFilterFactory<TData>
             return null;
 
         Expression<Func<EventRow<TData>, bool>> expression = x =>
-            _to.TotalMinutesFromStartOfTheDayUtc() > x.Repeat!.TimeOfTheDayUtcMinutes &&
+            _to.TotalMinutesFromStartOfTheDayUtc() > x.Repeat!.TimeOfTheDayInMinutes &&
             x.Repeat.DayOfMonth!.Value == ToDay;
 
         return expression;

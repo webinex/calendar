@@ -2,6 +2,6 @@
 
 public interface IRepeatBase
 {
-    int TimeOfTheDayUtcMinutes { get; }
+    int TimeOfTheDayInMinutes { get; }
     int DurationMinutes { get; }
 }

@@ -26,16 +26,19 @@ internal class Cache<TData> : ICache<TData>
     private readonly CalendarCacheOptions<TData> _options;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly ICalendarSettings<TData> _settings;
 
     public Cache(
         ICacheStore<TData> store,
         CalendarCacheOptions<TData> options,
         IAskyFieldMap<TData> dataFieldMap,
-        ICalendarDbContext<TData> dbContext)
+        ICalendarDbContext<TData> dbContext,
+        ICalendarSettings<TData> settings)
     {
         _store = store;
         _options = options;
         _dataFieldMap = dataFieldMap;
+        _settings = settings;
 
         ((DbContext)dbContext).SavedChanges += (_, _) => Flush();
     }
@@ -56,7 +59,8 @@ internal class Cache<TData> : ICache<TData>
             cacheEvent.TryApply(dictionary);
 
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        result = dictionary.Values.Where(EventFilterFactory.Create(from, to, dataFilter).Compile()).ToImmutableArray();
+        result = dictionary.Values.Where(EventFilterFactory.Create(from, to, dataFilter, _settings.TimeZone).Compile())
+            .ToImmutableArray();
         return true;
     }
 

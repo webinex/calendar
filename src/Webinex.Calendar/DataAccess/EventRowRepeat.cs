@@ -10,11 +10,12 @@ public class EventRowRepeat
     }
 
     public EventRowRepeatType Type { get; protected set; }
-    public int? IntervalMinutes { get; protected set; }
+    public int? Interval { get; protected set; }
     public int DurationMinutes { get; protected set; }
-    public int TimeOfTheDayUtcMinutes { get; protected set; }
+    public int TimeOfTheDayInMinutes { get; protected set; }
     public int? OvernightDurationMinutes { get; protected set; }
     public int? SameDayLastTime { get; protected set; }
+    public string? TimeZone { get; protected set; }
 
     public bool? Monday { get; protected set; }
     public bool? Tuesday { get; protected set; }
@@ -56,11 +57,8 @@ public class EventRowRepeat
         return new EventRowRepeat
         {
             Type = EventRowRepeatType.Interval,
-            IntervalMinutes = repeat.IntervalMinutes,
+            Interval = repeat.IntervalMinutes,
             DurationMinutes = repeat.DurationMinutes,
-            SameDayLastTime = repeat.SameDayLastTime(),
-            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
-            OvernightDurationMinutes = repeat.OvernightMinutes(),
         };
     }
 
@@ -71,9 +69,10 @@ public class EventRowRepeat
             Type = EventRowRepeatType.DayOfMonth,
             DurationMinutes = repeat.DurationMinutes,
             SameDayLastTime = repeat.SameDayLastTime(),
-            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = repeat.TimeOfTheDayInMinutes,
             OvernightDurationMinutes = repeat.OvernightMinutes(),
             DayOfMonth = repeat.DayOfMonth.Value,
+            TimeZone = repeat.TimeZone.Id,
         };
     }
 
@@ -84,8 +83,10 @@ public class EventRowRepeat
             Type = EventRowRepeatType.Weekday,
             DurationMinutes = repeat.DurationMinutes,
             SameDayLastTime = repeat.SameDayLastTime(),
-            TimeOfTheDayUtcMinutes = repeat.TimeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = repeat.TimeOfTheDayInMinutes,
             OvernightDurationMinutes = repeat.OvernightMinutes(),
+            TimeZone = repeat.TimeZone.Id,
+            Interval = repeat.Interval,
             Monday = repeat.Weekdays.Contains(Weekday.Monday),
             Tuesday = repeat.Weekdays.Contains(Weekday.Tuesday),
             Wednesday = repeat.Weekdays.Contains(Weekday.Wednesday),
@@ -112,17 +113,19 @@ public class EventRowRepeat
         return Repeat.NewInterval(
             period.ToOpenPeriod().Start,
             period.ToOpenPeriod().End,
-            IntervalMinutes!.Value,
+            Interval!.Value,
             DurationMinutes);
     }
 
     internal Repeat ToWeekdayModel()
     {
-        return Repeat.NewWeekday(TimeOfTheDayUtcMinutes, DurationMinutes, Weekdays);
+        return Repeat.NewWeekday(TimeOfTheDayInMinutes, DurationMinutes, Weekdays,
+            TimeZoneInfo.FindSystemTimeZoneById(TimeZone!), Interval);
     }
 
     internal Repeat ToDayOfMonthModel()
     {
-        return Repeat.NewDayOfMonth(TimeOfTheDayUtcMinutes, DurationMinutes, new DayOfMonth(DayOfMonth!.Value));
+        return Repeat.NewDayOfMonth(TimeOfTheDayInMinutes, DurationMinutes, new DayOfMonth(DayOfMonth!.Value),
+            TimeZoneInfo.FindSystemTimeZoneById(TimeZone!));
     }
 }

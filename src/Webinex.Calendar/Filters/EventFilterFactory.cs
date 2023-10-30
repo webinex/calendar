@@ -10,10 +10,11 @@ internal static class EventFilterFactory
     public static Expression<Func<EventRow<TData>, bool>> Create<TData>(
         DateTimeOffset from,
         DateTimeOffset to,
-        Expression<Func<TData, bool>>? dataFilter)
+        Expression<Func<TData, bool>>? dataFilter,
+        TimeZoneInfo timeZone)
         where TData : class, ICloneable
     {
-        return new Factory<TData>(from, to, dataFilter).Create();
+        return new Factory<TData>(from, to, dataFilter, timeZone).Create();
     }
 
     private class Factory<TData>
@@ -22,10 +23,16 @@ internal static class EventFilterFactory
         private readonly DateTimeOffset _from;
         private readonly DateTimeOffset _to;
         private readonly Expression<Func<TData, bool>>? _dataFilter;
+        private readonly TimeZoneInfo _timeZone;
 
-        public Factory(DateTimeOffset from, DateTimeOffset to, Expression<Func<TData, bool>>? dataFilter)
+        public Factory(
+            DateTimeOffset from,
+            DateTimeOffset to,
+            Expression<Func<TData, bool>>? dataFilter,
+            TimeZoneInfo timeZone)
         {
             _dataFilter = dataFilter;
+            _timeZone = timeZone;
             _from = from.ToUtc();
             _to = to.ToUtc();
         }
@@ -74,7 +81,7 @@ internal static class EventFilterFactory
             return Expressions.And(
                 @base,
                 Expressions.Or(
-                    new MatchWeekdayEventFilterFactory<TData>(_from, _to).Create(),
+                    new MatchWeekdayEventFilterFactory<TData>(_from, _to, _timeZone).Create(),
                     new MatchDayOfMonthEventFilterFactory<TData>(_from, _to).Create(),
                     CreateIntervalEventFilter()));
         }
@@ -85,16 +92,16 @@ internal static class EventFilterFactory
 
             return x => x.Repeat!.Type == EventRowRepeatType.Interval && (
                             x.Effective.Start >= _from.TotalMinutesSince1990()
-                            || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
+                            || (rangeMinutes >= x.Repeat!.Interval! &&
                                 (!x.Effective.End.HasValue ||
                                  x.Effective.End.Value >= _to.TotalMinutesSince1990() ||
-                                 x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
+                                 x.Effective.End.Value - _from.TotalMinutesSince1990() >= x.Repeat.Interval!))
                             || (_from.TotalMinutesSince1990() - x.Effective.Start) %
-                            x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes)
+                            x.Repeat.Interval < x.Repeat.DurationMinutes)
 
                         // TODO: s.skalaban check predicate
-                        || (((x.Effective.Start - _from.TotalMinutesSince1990()) % x.Repeat.IntervalMinutes) +
-                            x.Repeat.IntervalMinutes + _from.TotalMinutesSince1990() < _to.TotalMinutesSince1990());
+                        || (((x.Effective.Start - _from.TotalMinutesSince1990()) % x.Repeat.Interval) +
+                            x.Repeat.Interval + _from.TotalMinutesSince1990() < _to.TotalMinutesSince1990());
         }
     }
 }

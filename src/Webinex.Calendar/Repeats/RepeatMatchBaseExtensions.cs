@@ -6,7 +6,7 @@ internal static class RepeatMatchBaseExtensions
 
     private static int TotalEndMinutes(this IRepeatBase match)
     {
-        return match.TimeOfTheDayUtcMinutes + match.DurationMinutes;
+        return match.TimeOfTheDayInMinutes + match.DurationMinutes;
     }
 
     private static bool IsOvernight(this IRepeatBase match)

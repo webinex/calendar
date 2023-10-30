@@ -8,27 +8,31 @@ public class RepeatWeekday : Equatable, IRepeatBase
     {
     }
 
-    // public int? OvernightDurationMinutes { get; protected set; }
-    // public int SameDayLastTime { get; protected set; }
     public Weekday[] Weekdays { get; protected set; } = null!;
 
-    public int TimeOfTheDayUtcMinutes { get; protected set; }
+    public int TimeOfTheDayInMinutes { get; protected set; }
     public int DurationMinutes { get; protected set; }
+    public int? Interval { get; protected set; }
+    public TimeZoneInfo TimeZone { get; protected set; } = null!;
 
     public static RepeatWeekday New(RepeatWeekday value)
     {
         return new RepeatWeekday
         {
             Weekdays = value.Weekdays.Select(x => new Weekday(x.Value)).ToArray(),
-            TimeOfTheDayUtcMinutes = value.TimeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = value.TimeOfTheDayInMinutes,
             DurationMinutes = value.DurationMinutes,
+            TimeZone = value.TimeZone,
+            Interval = value.Interval,
         };
     }
 
     internal static RepeatWeekday New(
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
-        Weekday[] weekdays)
+        Weekday[] weekdays,
+        TimeZoneInfo timeZone,
+        int? interval = null)
     {
         if (!weekdays.Any())
             throw new InvalidOperationException($"{nameof(weekdays)} might contain at least one weekday");
@@ -46,13 +50,15 @@ public class RepeatWeekday : Equatable, IRepeatBase
         {
             Weekdays = weekdays,
             DurationMinutes = durationMinutes,
-            TimeOfTheDayUtcMinutes = timeOfTheDayUtcMinutes,
+            TimeOfTheDayInMinutes = timeOfTheDayUtcMinutes,
+            TimeZone = timeZone,
+            Interval = interval,
         };
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {
-        return new object?[] { TimeOfTheDayUtcMinutes, DurationMinutes, Weekdays }.Concat(Weekdays);
+        return new object?[] { TimeOfTheDayInMinutes, DurationMinutes, Weekdays, TimeZone, Interval }.Concat(Weekdays);
     }
 
     public static bool operator ==(RepeatWeekday? left, RepeatWeekday? right)

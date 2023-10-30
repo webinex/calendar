@@ -20,6 +20,14 @@ public class OpenPeriod : Equatable
     public DateTimeOffset Start { get; protected set; }
     public DateTimeOffset? End { get; protected set; }
 
+    public bool Intersects(Period period)
+    {
+        if (End.HasValue)
+            return ToPeriod().Intersects(period);
+
+        return period.End > Start;
+    }
+
     public static OpenPeriod New(OpenPeriod value)
     {
         return new OpenPeriod

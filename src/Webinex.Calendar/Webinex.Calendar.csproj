@@ -9,10 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ical.Net" Version="4.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
+    <PackageReference Include="NodaTime" Version="3.1.9" />
     <PackageReference Include="Webinex.Asky" Version="1.2.0" />
     <PackageReference Include="Webinex.Coded" Version="1.0.0" />
   </ItemGroup>
+
 
 </Project>
