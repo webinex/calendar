@@ -18,19 +18,22 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
     private readonly IRecurrentEventStateAskyFieldMap<TData> _recurrentEventStateAskyFieldMap;
     private readonly ICache<TData> _cache;
+    private readonly ICalendarSettings<TData> _settings;
 
     public Calendar(
         ICalendarDbContext<TData> dbContext,
         IAskyFieldMap<TData> dataFieldMap,
         IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap,
         IRecurrentEventStateAskyFieldMap<TData> recurrentEventStateAskyFieldMap,
-        ICache<TData> cache)
+        ICache<TData> cache,
+        ICalendarSettings<TData> settings)
     {
         _dbContext = dbContext;
         _dataFieldMap = dataFieldMap;
         _recurrentEventRowAskyFieldMap = recurrentEventRowAskyFieldMap;
         _recurrentEventStateAskyFieldMap = recurrentEventStateAskyFieldMap;
         _cache = cache;
+        _settings = settings;
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -151,7 +154,8 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         AssertEventMightExist(@event, eventStart);
 
         var dataRow =
-            EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart, eventStart.AddMinutes(@event.DurationMinutes()), data,
+            EventRow<TData>.NewRecurrentEventState(@event.Id, eventStart,
+                eventStart.AddMinutes(@event.DurationMinutes()), data,
                 null, false);
         await _dbContext.Events.AddAsync(dataRow);
         _cache.PushAdd(dataRow);
@@ -187,6 +191,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task<RecurrentEvent<TData>> IRecurrentEventCalendarInstance<TData>.AddAsync(RecurrentEvent<TData> @event)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
+
+        if (@event.Repeat.TimeZone() != null && !@event.Repeat.TimeZone()!.Equals(_settings.TimeZone))
+            throw new InvalidOperationException("TimeZone might match .UseTimeZone() specified for calendar.");
+        
         var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective,
             (TData)@event.Data.Clone());
         await _dbContext.Events.AddAsync(row);
@@ -212,7 +220,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         moveTo = moveTo ?? throw new ArgumentNullException(nameof(moveTo));
         AssertEventMightExist(@event, eventStart);
-        
+
         var stateRow = await FindRecurrentEventStateAsync(@event.Id, eventStart);
 
         if (stateRow == null)
@@ -255,6 +263,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         {
             rowToCancel.Cancel();
         }
+
         _cache.PushUpdate(cancel);
 
         _dbContext.Events.RemoveRange(remove);
@@ -267,7 +276,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
         AssertEventMightExist(@event, eventStart);
-        
+
         var stateRow = await FindRecurrentEventStateAsync(@event.Id, eventStart);
 
         if (stateRow == null)
@@ -390,8 +399,11 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         FilterRule? dataFilterRule = null,
         QueryOptions queryOptions = QueryOptions.Db)
     {
+        var period = new Period(from, to);
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from, to, dataFilterRule, queryOptions);
+        
+        // +/- 1 hour needed to ensure DST transition events loaded, it would be additionally filtered at the end of method
+        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from.AddHours(-1), to.AddHours(1), dataFilterRule, queryOptions);
         var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent).ToArray();
 
         var recurrentEventStates = rows
@@ -415,7 +427,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         if (dataFilter != null)
             result = result.Where(Expressions.Child<Event<TData>, TData>(x => x.Data, dataFilter).Compile()).ToArray();
 
-        return result;
+        return result.Where(x => period.Intersects(new Period(x.Start, x.End))).ToArray();
     }
 
     private async Task<EventRow<TData>[]> GetRowsFromCacheOrFallbackToDbContextAsync(
@@ -438,7 +450,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
 
         var queryable = _dbContext.Events.AsQueryable()
-            .Where(EventFilterFactory.Create(from, to, dataFilter));
+            .Where(EventFilterFactory.Create(from, to, dataFilter, _settings.TimeZone));
 
         return await queryable.ToArrayAsync();
     }

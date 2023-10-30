@@ -23,6 +23,17 @@ internal static class DateTimeOffsetExtensions
         return (int)(value - start).TotalMinutes;
     }
 
+    public static DateTimeOffset StartOfTheDay(this DateTimeOffset value)
+    {
+        return new DateTimeOffset(value.Date, value.Offset);
+    }
+
+    public static int TotalMinutesFromStartOfTheDay(this DateTimeOffset value)
+    {
+        var start = value.StartOfTheDay();
+        return (int)(value - start).TotalMinutes;
+    }
+
     public static long TotalMinutesSince1990(this DateTimeOffset value)
     {
         value = value.ToUtc();

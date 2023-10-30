@@ -17,6 +17,7 @@ public class WhenGetAllWeeklyRepeatEventTests : IntegrationTestsBase
             (int)TimeSpan.FromHours(6).TotalMinutes,
             (int)TimeSpan.FromHours(1).TotalMinutes,
             new[] { Weekday.Sunday, Weekday.Tuesday },
+            TimeZoneInfo.Utc,
             new EventData("NAME"));
 
         await Calendar.Recurrent.AddAsync(@event);
@@ -35,6 +36,7 @@ public class WhenGetAllWeeklyRepeatEventTests : IntegrationTestsBase
             (int)TimeSpan.FromHours(6).TotalMinutes,
             (int)TimeSpan.FromHours(1).TotalMinutes,
             new[] { Weekday.Sunday, Weekday.Tuesday },
+            TimeZoneInfo.Utc,
             new EventData("NAME"));
 
         await Calendar.Recurrent.AddAsync(@event);

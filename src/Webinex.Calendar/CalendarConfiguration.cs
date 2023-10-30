@@ -14,6 +14,7 @@ public interface ICalendarConfiguration
     Type EventRowType { get; }
     IDictionary<string, object> Values { get; }
 
+    ICalendarConfiguration UseTimeZone(TimeZoneInfo timeZone);
     ICalendarConfiguration AddDbContext<TDbContext>() where TDbContext : DbContext;
     ICalendarConfiguration AddAskyFieldMap<T>();
     ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
@@ -39,6 +40,11 @@ internal class CalendarConfiguration : ICalendarConfiguration
         _services.AddScoped(
             typeof(IRecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType),
             typeof(RecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType));
+
+        Settings = (CalendarSettings)Activator.CreateInstance(
+            typeof(CalendarSettings<>).MakeGenericType(EventDataType))!;
+
+        _services.AddSingleton(typeof(ICalendarSettings<>).MakeGenericType(EventDataType), Settings);
     }
 
     private Type CalendarDbContextType => typeof(ICalendarDbContext<>).MakeGenericType(EventDataType);
@@ -47,6 +53,13 @@ internal class CalendarConfiguration : ICalendarConfiguration
     public Type EventDataType { get; }
     public Type EventRowType => typeof(EventRow<>).MakeGenericType(EventDataType);
     public IDictionary<string, object> Values { get; } = new Dictionary<string, object>();
+    private CalendarSettings Settings { get; }
+
+    public ICalendarConfiguration UseTimeZone(TimeZoneInfo timeZone)
+    {
+        Settings.TimeZone = timeZone;
+        return this;
+    }
 
     public ICalendarConfiguration AddDbContext<TDbContext>()
         where TDbContext : DbContext
@@ -129,5 +142,14 @@ internal class CalendarConfiguration : ICalendarConfiguration
             throw new InvalidOperationException(
                 $"{type.FullName} might be assignable to {CalendarDbContextType.FullName}");
         }
+    }
+
+    private class CalendarSettings : ICalendarSettings
+    {
+        public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Utc;
+    }
+
+    private class CalendarSettings<TData> : CalendarSettings, ICalendarSettings<TData>
+    {
     }
 }
