@@ -12,7 +12,7 @@ public class Repeat : Equatable
     public RepeatWeekday? Weekday { get; protected set; }
     public RepeatDayOfMonth? DayOfMonth { get; protected set; }
 
-    public TimeZoneInfo? TimeZone() => Weekday?.TimeZone ?? DayOfMonth?.TimeZone;
+    public string? TimeZone() => Weekday?.TimeZone ?? DayOfMonth?.TimeZone;
 
     public static Repeat New(Repeat repeat)
     {
@@ -48,7 +48,7 @@ public class Repeat : Equatable
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         Weekday[] weekdays,
-        TimeZoneInfo timeZone,
+        string timeZone,
         int? interval = null)
     {
         return new Repeat
@@ -69,7 +69,7 @@ public class Repeat : Equatable
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         DayOfMonth dayOfMonth,
-        TimeZoneInfo timeZone)
+        string timeZone)
     {
         return new Repeat
         {

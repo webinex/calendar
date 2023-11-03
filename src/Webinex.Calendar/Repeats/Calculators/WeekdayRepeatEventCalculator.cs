@@ -19,7 +19,7 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
 
     private CalendarEvent GetCalendarEvent(RecurrentEvent @event)
     {
-        var (effectiveStartTz, effectiveEndTz) = Tz(@event.Effective, @event.Repeat.Weekday!.TimeZone.Id);
+        var (effectiveStartTz, effectiveEndTz) = Tz(@event.Effective, @event.Repeat.Weekday!.TimeZone);
 
         var eventStart =
             effectiveStartTz.Date.At(LocalTime.FromMinutesSinceMidnight(@event.Repeat.Weekday.TimeOfTheDayInMinutes));
@@ -48,23 +48,20 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
         DateTimeOffset? end)
     {
         var period = new OpenPeriod(start.ToUtc(), end?.ToUtc());
-        var tz = @event.Repeat.Weekday!.TimeZone.Id;
+        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.Weekday!.TimeZone];
         var calendar = new Ical.Net.Calendar();
         calendar.Events.Add(calendarEvent);
 
         var occurrences = calendar.GetOccurrencesEnumerable(
-            TimeZoneInfo.ConvertTimeFromUtc(start.ToUtc().DateTime, TimeZoneInfo.FindSystemTimeZoneById(tz)),
-            end.HasValue
-                ? TimeZoneInfo.ConvertTimeFromUtc(end.Value.ToUtc().DateTime, TimeZoneInfo.FindSystemTimeZoneById(tz))
-                    .AddMilliseconds(-1)
-                : null);
+            start.ToInstant().InZone(tz).ToDateTimeUnspecified(),
+            end?.ToInstant().InZone(tz).ToDateTimeUnspecified().AddMilliseconds(-1));
 
         return occurrences.Select(x => Map(@event, x)).Where(x => period.Intersects(x));
     }
 
     private Period Map(RecurrentEvent @event, Occurrence x)
     {
-        var dtTz = DateTimeZoneProviders.Tzdb[@event.Repeat.Weekday!.TimeZone.Id];
+        var dtTz = DateTimeZoneProviders.Tzdb[@event.Repeat.Weekday!.TimeZone];
         var startTz = x.Period.StartTime.Value.Unspecified().ToLocalDateTime().InZoneLeniently(dtTz);
 
         return new Period(

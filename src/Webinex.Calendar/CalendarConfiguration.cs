@@ -14,7 +14,7 @@ public interface ICalendarConfiguration
     Type EventRowType { get; }
     IDictionary<string, object> Values { get; }
 
-    ICalendarConfiguration UseTimeZone(TimeZoneInfo timeZone);
+    ICalendarConfiguration UseTimeZone(string timeZone);
     ICalendarConfiguration AddDbContext<TDbContext>() where TDbContext : DbContext;
     ICalendarConfiguration AddAskyFieldMap<T>();
     ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
@@ -55,7 +55,7 @@ internal class CalendarConfiguration : ICalendarConfiguration
     public IDictionary<string, object> Values { get; } = new Dictionary<string, object>();
     private CalendarSettings Settings { get; }
 
-    public ICalendarConfiguration UseTimeZone(TimeZoneInfo timeZone)
+    public ICalendarConfiguration UseTimeZone(string timeZone)
     {
         Settings.TimeZone = timeZone;
         return this;
@@ -146,7 +146,7 @@ internal class CalendarConfiguration : ICalendarConfiguration
 
     private class CalendarSettings : ICalendarSettings
     {
-        public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Utc;
+        public string TimeZone { get; set; } = TimeZoneInfo.Utc.Id;
     }
 
     private class CalendarSettings<TData> : CalendarSettings, ICalendarSettings<TData>

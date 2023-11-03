@@ -53,7 +53,7 @@ public class CreateEventRequestDto : IValidatableObject
                 TimeOfTheDayUtcMinutes!.Value,
                 DurationMinutes!.Value,
                 Weekdays!.Select(x => new Weekday(x)).ToArray(),
-                TimeZoneInfo.Utc,
+                TimeZoneInfo.Utc.Id,
                 new EventData(Title)),
 
             CreateEventRequestType.RepeatDayOfMonth => RecurrentEvent<EventData>.NewDayOfMonth(
@@ -62,7 +62,7 @@ public class CreateEventRequestDto : IValidatableObject
                 TimeOfTheDayUtcMinutes!.Value,
                 DurationMinutes!.Value,
                 new DayOfMonth(DayOfMonth!.Value),
-                TimeZoneInfo.Utc,
+                TimeZoneInfo.Utc.Id,
                 new EventData(Title)),
 
             _ => throw new ArgumentOutOfRangeException(),

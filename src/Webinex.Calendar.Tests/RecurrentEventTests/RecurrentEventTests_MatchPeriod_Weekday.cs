@@ -63,7 +63,7 @@ public class RecurrentEventTests_MatchPeriod_Weekday
             600,
             60,
             new[] { Weekday.Monday },
-            TimeZoneInfo.Utc,
+            TimeZoneInfo.Utc.Id,
             new object());
     }
 }

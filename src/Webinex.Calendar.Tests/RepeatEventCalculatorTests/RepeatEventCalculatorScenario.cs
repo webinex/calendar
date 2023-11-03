@@ -28,7 +28,7 @@ public class RepeatEventCalculatorScenario
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
                 weekdays,
-                TimeZoneInfo.FindSystemTimeZoneById(tz),
+                tz,
                 interval),
             new OpenPeriod(effectiveStart, effectiveEnd), new object());
 
@@ -55,7 +55,7 @@ public class RepeatEventCalculatorScenario
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
                 new DayOfMonth(dayOfMonth),
-                TimeZoneInfo.Utc),
+                TimeZoneInfo.Utc.Id),
             new OpenPeriod(DateTimeOffset.MinValue, null), new object());
 
         return this;

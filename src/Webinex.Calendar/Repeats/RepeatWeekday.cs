@@ -13,7 +13,7 @@ public class RepeatWeekday : Equatable, IRepeatBase
     public int TimeOfTheDayInMinutes { get; protected set; }
     public int DurationMinutes { get; protected set; }
     public int? Interval { get; protected set; }
-    public TimeZoneInfo TimeZone { get; protected set; } = null!;
+    public string TimeZone { get; protected set; } = null!;
 
     public static RepeatWeekday New(RepeatWeekday value)
     {
@@ -31,7 +31,7 @@ public class RepeatWeekday : Equatable, IRepeatBase
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         Weekday[] weekdays,
-        TimeZoneInfo timeZone,
+        string timeZone,
         int? interval = null)
     {
         if (!weekdays.Any())
