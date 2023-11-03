@@ -11,7 +11,7 @@ internal static class EventFilterFactory
         DateTimeOffset from,
         DateTimeOffset to,
         Expression<Func<TData, bool>>? dataFilter,
-        TimeZoneInfo timeZone)
+        string timeZone)
         where TData : class, ICloneable
     {
         return new Factory<TData>(from, to, dataFilter, timeZone).Create();
@@ -23,13 +23,13 @@ internal static class EventFilterFactory
         private readonly DateTimeOffset _from;
         private readonly DateTimeOffset _to;
         private readonly Expression<Func<TData, bool>>? _dataFilter;
-        private readonly TimeZoneInfo _timeZone;
+        private readonly string _timeZone;
 
         public Factory(
             DateTimeOffset from,
             DateTimeOffset to,
             Expression<Func<TData, bool>>? dataFilter,
-            TimeZoneInfo timeZone)
+            string timeZone)
         {
             _dataFilter = dataFilter;
             _timeZone = timeZone;

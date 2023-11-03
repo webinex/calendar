@@ -19,7 +19,7 @@ internal class DayOfMonthRepeatEventCalculator : RepeatEventCalculatorBase
 
     private CalendarEvent GetCalendarEvent(RecurrentEvent @event)
     {
-        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.DayOfMonth!.TimeZone.Id];
+        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.DayOfMonth!.TimeZone];
         var effectiveStart = @event.Effective.Start.DateTime.ToLocalDateTime().InZoneLeniently(tz);
         var effectiveEnd = @event.Effective.End?.DateTime.ToLocalDateTime().InZoneLeniently(tz);
         var eventStart = effectiveStart.LocalDateTime.ThisOrNext(@event.Repeat.DayOfMonth.DayOfMonth,
@@ -56,18 +56,16 @@ internal class DayOfMonthRepeatEventCalculator : RepeatEventCalculatorBase
         var calendar = new Ical.Net.Calendar();
         calendar.Events.Add(calendarEvent);
 
-        var startTz = TimeZoneInfo.ConvertTimeFromUtc(start.ToUtc().DateTime, @event.Repeat.DayOfMonth!.TimeZone);
-        var endTz = end.HasValue
-            ? TimeZoneInfo.ConvertTimeFromUtc(end.Value.ToUtc().DateTime, @event.Repeat.DayOfMonth.TimeZone)
-            : default(DateTime?);
-
+        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.DayOfMonth!.TimeZone];
+        var startTz = start.ToInstant().InZone(tz).ToDateTimeUnspecified();
+        var endTz = end?.ToInstant().InZone(tz).ToDateTimeUnspecified();
         var occurrences = calendar.GetOccurrencesEnumerable(startTz, endTz?.AddMilliseconds(-1));
         return occurrences.Select(x => Map(@event, x)).Where(x => period.Intersects(x));
     }
 
     private Period Map(RecurrentEvent @event, Occurrence occurrence)
     {
-        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.DayOfMonth!.TimeZone.Id];
+        var tz = DateTimeZoneProviders.Tzdb[@event.Repeat.DayOfMonth!.TimeZone];
         var eventStartTz = occurrence.Period.StartTime.Value.ToLocalDateTime().InZoneLeniently(tz);
 
         return new Period(

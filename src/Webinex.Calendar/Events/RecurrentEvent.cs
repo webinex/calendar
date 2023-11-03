@@ -35,7 +35,7 @@ public class RecurrentEvent<TData> : RecurrentEvent
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         Weekday[] weekdays,
-        TimeZoneInfo timeZone,
+        string timeZone,
         TData data)
     {
         var repeat = Repeat.NewWeekday(timeOfTheDayUtcMinutes, durationMinutes, weekdays, timeZone);
@@ -73,7 +73,7 @@ public class RecurrentEvent<TData> : RecurrentEvent
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         DayOfMonth dayOfMonth,
-        TimeZoneInfo timeZone,
+        string timeZone,
         TData data)
     {
         return new RecurrentEvent<TData>

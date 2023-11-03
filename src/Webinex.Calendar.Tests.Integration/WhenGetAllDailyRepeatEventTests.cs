@@ -16,7 +16,7 @@ public class WhenGetAllDailyRepeatEventTests : IntegrationTestsBase
             timeOfTheDayUtcMinutes: 6 * 60,
             60,
             new DayOfMonth(25),
-            TimeZoneInfo.Utc,
+            TimeZoneInfo.Utc.Id,
             new EventData("NAME"));
 
         await Calendar.Recurrent.AddAsync(@event);
@@ -38,7 +38,7 @@ public class WhenGetAllDailyRepeatEventTests : IntegrationTestsBase
             timeOfTheDayUtcMinutes: 6 * 60,
             60,
             new DayOfMonth(25),
-            TimeZoneInfo.Utc,
+            TimeZoneInfo.Utc.Id,
             new EventData("NAME"));
 
         await Calendar.Recurrent.AddAsync(@event);

@@ -2,7 +2,7 @@
 
 public interface ICalendarSettings
 {
-    TimeZoneInfo TimeZone { get; }
+    string TimeZone { get; }
 }
 
 public interface ICalendarSettings<TData> : ICalendarSettings

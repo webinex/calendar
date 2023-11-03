@@ -1,6 +1,9 @@
 ﻿using System.Linq.Expressions;
+using NodaTime;
+using NodaTime.Extensions;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.DataAccess;
+using Period = Webinex.Calendar.Common.Period;
 
 namespace Webinex.Calendar.Filters;
 
@@ -10,10 +13,11 @@ internal class MatchWeekdayEventFilterFactory<TData>
     private readonly DateTimeOffset _from;
     private readonly DateTimeOffset _to;
 
-    public MatchWeekdayEventFilterFactory(DateTimeOffset from, DateTimeOffset to, TimeZoneInfo timeZone)
+    public MatchWeekdayEventFilterFactory(DateTimeOffset from, DateTimeOffset to, string timeZone)
     {
-        _from = TimeZoneInfo.ConvertTimeFromUtc(from.DateTime, timeZone);
-        _to = TimeZoneInfo.ConvertTimeFromUtc(to.DateTime, timeZone);
+        var tz = DateTimeZoneProviders.Tzdb[timeZone];
+        _from = from.ToInstant().InZone(tz).ToDateTimeUnspecified();
+        _to = to.ToInstant().InZone(tz).ToDateTimeUnspecified();
     }
 
     private Weekday ToWeekday => Weekday.From(_to.DayOfWeek);
