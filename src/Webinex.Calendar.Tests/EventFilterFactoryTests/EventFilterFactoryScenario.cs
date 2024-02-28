@@ -181,8 +181,8 @@ public class EventFilterFactoryScenario
 
     private EventRow<TestEventData>[] Filter()
     {
-        var filter = EventFilterFactory.Create<TestEventData>(_period.Start, _period.End!.Value, null).Compile();
-        return _events.SelectMany(x => x.Value).Where(filter).ToArray();
+        var filter = new EventFiltersFactory<TestEventData>(_period.Start, _period.End!.Value, null, DbFilterOptimization.Default);
+        return filter.Filter(_events.SelectMany(x => x.Value)).ToArray();
     }
 
     public void ToBeEmpty()

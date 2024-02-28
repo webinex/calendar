@@ -13,6 +13,7 @@ internal interface ICache<TData> where TData : class, ICloneable
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule,
+        DbFilterOptimization? filterOptimization,
         out ImmutableArray<EventRow<TData>>? result);
 
     void Push(IEnumerable<CacheEvent<TData>> values);
@@ -26,16 +27,19 @@ internal class Cache<TData> : ICache<TData>
     private readonly CalendarCacheOptions<TData> _options;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly ICalendarOptions<TData> _calendarOptions;
 
     public Cache(
         ICacheStore<TData> store,
         CalendarCacheOptions<TData> options,
         IAskyFieldMap<TData> dataFieldMap,
-        ICalendarDbContext<TData> dbContext)
+        ICalendarDbContext<TData> dbContext,
+        ICalendarOptions<TData> calendarOptions)
     {
         _store = store;
         _options = options;
         _dataFieldMap = dataFieldMap;
+        _calendarOptions = calendarOptions;
 
         ((DbContext)dbContext).SavedChanges += (_, _) => Flush();
     }
@@ -44,6 +48,7 @@ internal class Cache<TData> : ICache<TData>
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule,
+        DbFilterOptimization? filterOptimization,
         out ImmutableArray<EventRow<TData>>? result)
     {
         result = null;
@@ -56,7 +61,12 @@ internal class Cache<TData> : ICache<TData>
             cacheEvent.TryApply(dictionary);
 
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        result = dictionary.Values.Where(EventFilterFactory.Create(from, to, dataFilter).Compile()).ToImmutableArray();
+        var filter = new EventFiltersFactory<TData>(
+            from,
+            to,
+            dataFilter,
+            filterOptimization ?? _calendarOptions.DbFilterOptimization);
+        result = filter.Filter(dictionary.Values).ToImmutableArray();
         return true;
     }
 

@@ -12,7 +12,7 @@ public static class CalendarServiceCollectionExtensions
         services = services ?? throw new ArgumentNullException(nameof(services));
         configure = configure ?? throw new ArgumentNullException(nameof(configure));
 
-        var configuration = new CalendarConfiguration(typeof(TData), services);
+        var configuration = new CalendarConfiguration<TData>(typeof(TData), services);
         configure(configuration);
 
         configuration.Complete();

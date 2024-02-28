@@ -14,12 +14,19 @@ public interface ICalendarConfiguration
     Type EventRowType { get; }
     IDictionary<string, object> Values { get; }
 
+    ICalendarConfiguration UseDbFilterOptimization(DbFilterOptimization optimization);
     ICalendarConfiguration AddDbContext<TDbContext>() where TDbContext : DbContext;
     ICalendarConfiguration AddAskyFieldMap<T>();
     ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
 }
 
-internal class CalendarConfiguration : ICalendarConfiguration
+public interface ICalendarOptions<TData>
+{
+    DbFilterOptimization DbFilterOptimization { get; }
+}
+
+internal class CalendarConfiguration<TData> : ICalendarConfiguration, ICalendarOptions<TData>
+    where TData : class, ICloneable
 {
     private readonly IServiceCollection _services;
 
@@ -27,18 +34,12 @@ internal class CalendarConfiguration : ICalendarConfiguration
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         EventDataType = eventDataType ?? throw new ArgumentNullException(nameof(eventDataType));
+        DbFilterOptimization = DbFilterOptimization.Default;
 
-        _services.AddScoped(
-            typeof(ICalendar<>).MakeGenericType(EventDataType),
-            typeof(Calendar<>).MakeGenericType(EventDataType));
-
-        _services.AddScoped(
-            typeof(IRecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType),
-            typeof(RecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType));
-
-        _services.AddScoped(
-            typeof(IRecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType),
-            typeof(RecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType));
+        _services.AddSingleton<ICalendarOptions<TData>>(this);
+        _services.AddScoped<ICalendar<TData>, Calendar<TData>>();
+        _services.AddScoped<IRecurrentEventRowAskyFieldMap<TData>, RecurrentEventRowAskyFieldMap<TData>>();
+        _services.AddScoped<IRecurrentEventStateAskyFieldMap<TData>, RecurrentEventStateAskyFieldMap<TData>>();
     }
 
     private Type CalendarDbContextType => typeof(ICalendarDbContext<>).MakeGenericType(EventDataType);
@@ -46,7 +47,16 @@ internal class CalendarConfiguration : ICalendarConfiguration
 
     public Type EventDataType { get; }
     public Type EventRowType => typeof(EventRow<>).MakeGenericType(EventDataType);
+
+    public DbFilterOptimization DbFilterOptimization { get; private set; }
+
     public IDictionary<string, object> Values { get; } = new Dictionary<string, object>();
+
+    public ICalendarConfiguration UseDbFilterOptimization(DbFilterOptimization optimization)
+    {
+        DbFilterOptimization = optimization;
+        return this;
+    }
 
     public ICalendarConfiguration AddDbContext<TDbContext>()
         where TDbContext : DbContext

@@ -18,19 +18,22 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
     private readonly IRecurrentEventStateAskyFieldMap<TData> _recurrentEventStateAskyFieldMap;
     private readonly ICache<TData> _cache;
+    private readonly ICalendarOptions<TData> _calendarOptions;
 
     public Calendar(
         ICalendarDbContext<TData> dbContext,
         IAskyFieldMap<TData> dataFieldMap,
         IRecurrentEventRowAskyFieldMap<TData> recurrentEventRowAskyFieldMap,
         IRecurrentEventStateAskyFieldMap<TData> recurrentEventStateAskyFieldMap,
-        ICache<TData> cache)
+        ICache<TData> cache,
+        ICalendarOptions<TData> calendarOptions)
     {
         _dbContext = dbContext;
         _dataFieldMap = dataFieldMap;
         _recurrentEventRowAskyFieldMap = recurrentEventRowAskyFieldMap;
         _recurrentEventStateAskyFieldMap = recurrentEventStateAskyFieldMap;
         _cache = cache;
+        _calendarOptions = calendarOptions;
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -388,10 +391,11 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule = null,
-        QueryOptions queryOptions = QueryOptions.Db)
+        QueryOptions queryOptions = QueryOptions.Db,
+        DbFilterOptimization? filterOptimization = default)
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from, to, dataFilterRule, queryOptions);
+        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from, to, dataFilterRule, queryOptions, filterOptimization);
         var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent).ToArray();
 
         var recurrentEventStates = rows
@@ -422,25 +426,27 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule = null,
-        QueryOptions queryOptions = QueryOptions.Db)
+        QueryOptions queryOptions = QueryOptions.Db,
+        DbFilterOptimization? filterOptimization = default)
     {
-        if (queryOptions == QueryOptions.TryCache && _cache.TryGetAll(from, to, dataFilterRule, out var rows))
+        if (queryOptions == QueryOptions.TryCache && _cache.TryGetAll(from, to, dataFilterRule, filterOptimization, out var rows))
             return rows!.Value.ToArray();
 
-        return await GetRowsFromDbContextAsync(from, to, dataFilterRule);
+        return await GetRowsFromDbContextAsync(from, to, dataFilterRule, filterOptimization);
     }
 
     private async Task<EventRow<TData>[]> GetRowsFromDbContextAsync(
         DateTimeOffset from,
         DateTimeOffset to,
-        FilterRule? dataFilterRule = null)
+        FilterRule? dataFilterRule = null,
+        DbFilterOptimization? filterOptimization = default)
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
+        var filters = new EventFiltersFactory<TData>(from, to, dataFilter, filterOptimization ?? _calendarOptions.DbFilterOptimization);
 
-        var queryable = _dbContext.Events.AsQueryable()
-            .Where(EventFilterFactory.Create(from, to, dataFilter));
+        var result = await filters.Filter(_dbContext.Events.AsQueryable());
 
-        return await queryable.ToArrayAsync();
+        return result.ToArray();
     }
 
     private async Task<EventRow<TData>?> FindAsync(Guid id, EventType? type = null)
