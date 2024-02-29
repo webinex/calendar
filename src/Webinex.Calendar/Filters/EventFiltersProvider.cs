@@ -24,6 +24,9 @@ public record EventFiltersProvider<TData>(
 
     public Expression<Func<EventRow<TData>, bool>> Create()
     {
+        if (!OneTime && !DayOfMonth && !DayOfWeek && !Interval && !State)
+            throw new ArgumentException("At least one type of events must be set");
+
         Expression<Func<EventRow<TData>, bool>> @base = x =>
             x.Effective.Start < To.TotalMinutesSince1990() &&
             (x.Effective.End > From.TotalMinutesSince1990() || x.Effective.End == null);
@@ -42,7 +45,7 @@ public record EventFiltersProvider<TData>(
         if (!OneTime)
             return null;
 
-        return x => x.Effective.End > From.TotalMinutesSince1990() && x.Type == EventType.OneTimeEvent;
+        return x => x.Type == EventType.OneTimeEvent;
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateRecurrentEventStateFilter()
@@ -71,9 +74,7 @@ public record EventFiltersProvider<TData>(
         Expression<Func<EventRow<TData>, bool>> @base = x => x.Type == EventType.RecurrentEvent;
 
         if (!Precise && (DayOfWeek || DayOfMonth || Interval))
-            return Expressions.And(@base, x => x.Effective.Start < To.TotalMinutesSince1990() &&
-                                               (x.Effective.End > From.TotalMinutesSince1990() ||
-                                                x.Effective.End == null));
+            return @base;
 
         var predicates = GetPredicates().ToArray();
 
