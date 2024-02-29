@@ -1,5 +1,6 @@
 ﻿using Webinex.Calendar.Common;
 using Webinex.Calendar.Repeats;
+using Webinex.Calendar.Repeats.Calculators;
 
 namespace Webinex.Calendar.Events;
 
@@ -34,9 +35,10 @@ public class RecurrentEvent<TData> : RecurrentEvent
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         Weekday[] weekdays,
+        string timeZone,
         TData data)
     {
-        var repeat = Repeat.NewWeekday(timeOfTheDayUtcMinutes, durationMinutes, weekdays);
+        var repeat = Repeat.NewWeekday(timeOfTheDayUtcMinutes, durationMinutes, weekdays, timeZone);
 
         return new RecurrentEvent<TData>
         {
@@ -71,6 +73,7 @@ public class RecurrentEvent<TData> : RecurrentEvent
         int timeOfTheDayUtcMinutes,
         int durationMinutes,
         DayOfMonth dayOfMonth,
+        string timeZone,
         TData data)
     {
         return new RecurrentEvent<TData>
@@ -78,7 +81,7 @@ public class RecurrentEvent<TData> : RecurrentEvent
             Id = Guid.NewGuid(),
             Effective = new OpenPeriod(start, end).ToUtc(),
             Data = data,
-            Repeat = Repeat.NewDayOfMonth(timeOfTheDayUtcMinutes, durationMinutes, dayOfMonth),
+            Repeat = Repeat.NewDayOfMonth(timeOfTheDayUtcMinutes, durationMinutes, dayOfMonth, timeZone),
         };
     }
 
@@ -154,6 +157,11 @@ public class RecurrentEvent<TData> : RecurrentEvent
 
     public Period? LastPeriod(DateTimeOffset until)
     {
+        if (until <= Effective.Start)
+        {
+            return null;
+        }
+        
         return RepeatEventCalculator.Matches(this, Effective.Start, until).MaxBy(x => x.Start);
     }
 

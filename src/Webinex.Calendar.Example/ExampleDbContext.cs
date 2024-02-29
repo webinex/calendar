@@ -43,11 +43,12 @@ public class ExampleDbContext : DbContext, ICalendarDbContext<EventData>
             row.OwnsOne(x => x.Repeat, repeat =>
             {
                 repeat.Property(x => x.Type).HasColumnName("Repeat_Type");
-                repeat.Property(x => x.IntervalMinutes).HasColumnName("Repeat_IntervalMinutes");
+                repeat.Property(x => x.Interval).HasColumnName("Repeat_Interval");
                 repeat.Property(x => x.DurationMinutes).HasColumnName("Repeat_DurationMinutes");
-                repeat.Property(x => x.TimeOfTheDayUtcMinutes).HasColumnName("Repeat_TimeOfTheDayUtcMinutes");
+                repeat.Property(x => x.TimeOfTheDayInMinutes).HasColumnName("Repeat_TimeOfTheDayInMinutes");
                 repeat.Property(x => x.OvernightDurationMinutes).HasColumnName("Repeat_OvernightDurationMinutes");
                 repeat.Property(x => x.SameDayLastTime).HasColumnName("Repeat_SameDayLastTime");
+                repeat.Property(x => x.TimeZone).HasColumnName("Repeat_TimeZone");
                 repeat.Property(x => x.Monday).HasColumnName("Repeat_Monday");
                 repeat.Property(x => x.Tuesday).HasColumnName("Repeat_Tuesday");
                 repeat.Property(x => x.Wednesday).HasColumnName("Repeat_Wednesday");

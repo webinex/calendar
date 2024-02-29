@@ -2,22 +2,15 @@
 
 namespace Webinex.Calendar.Repeats;
 
-public class RepeatInterval : Equatable, IRepeatBase
+public class RepeatInterval : Equatable
 {
     protected RepeatInterval()
     {
     }
 
     public long StartSince1990Minutes { get; protected set; }
-    public long? EndSince1990Minutes { get; protected set; }
     public int IntervalMinutes { get; protected set; }
-    public int TimeOfTheDayUtcMinutes => Start().ToUtc().TotalMinutesFromStartOfTheDayUtc();
     public int DurationMinutes { get; protected set; }
-
-    public DateTimeOffset Start()
-    {
-        return Constants.J1_1990.AddMinutes(StartSince1990Minutes);
-    }
 
     public static RepeatInterval New(RepeatInterval value)
     {
@@ -25,7 +18,6 @@ public class RepeatInterval : Equatable, IRepeatBase
         {
             DurationMinutes = value.DurationMinutes,
             IntervalMinutes = value.IntervalMinutes,
-            EndSince1990Minutes = value.EndSince1990Minutes,
             StartSince1990Minutes = value.StartSince1990Minutes,
         };
     }
@@ -42,12 +34,11 @@ public class RepeatInterval : Equatable, IRepeatBase
         if (end.HasValue && (end.Value.Second > 0 || end.Value.Millisecond > 0))
             throw new ArgumentException("Might not contain seconds and milliseconds", nameof(end));
 
-        var startSince1990Minutes = (int)(start.ToOffset(TimeSpan.Zero) - Constants.J1_1990).TotalMinutes;
+        var startSince1990Minutes = (int)(start.ToUtc() - Constants.J1_1990).TotalMinutes;
 
         return new RepeatInterval
         {
             StartSince1990Minutes = startSince1990Minutes,
-            EndSince1990Minutes = end.HasValue ? (int)(end.Value.ToUtc() - Constants.J1_1990).TotalMinutes : null,
             IntervalMinutes = intervalMinutes,
             DurationMinutes = durationMinutes,
         };

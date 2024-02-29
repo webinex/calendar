@@ -4,6 +4,7 @@ using FluentAssertions;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
 using Webinex.Calendar.Repeats;
+using Webinex.Calendar.Repeats.Calculators;
 
 namespace Webinex.Calendar.Tests.RepeatEventCalculatorTests;
 
@@ -15,6 +16,10 @@ public class RepeatEventCalculatorScenario
     public RepeatEventCalculatorScenario WithWeekdayMatch(
         string timeOfTheDay,
         string duration,
+        string tz,
+        int? interval,
+        DateTimeOffset effectiveStart,
+        DateTimeOffset? effectiveEnd,
         params Weekday[] weekdays)
     {
         _event = new RecurrentEvent<object>(
@@ -22,10 +27,21 @@ public class RepeatEventCalculatorScenario
             Repeat.NewWeekday(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
-                weekdays),
-            new OpenPeriod(DateTimeOffset.MinValue, null), new object());
+                weekdays,
+                tz,
+                interval),
+            new OpenPeriod(effectiveStart, effectiveEnd), new object());
 
         return this;
+    }
+
+    public RepeatEventCalculatorScenario WithWeekdayMatch(
+        string timeOfTheDay,
+        string duration,
+        string tz,
+        params Weekday[] weekdays)
+    {
+        return WithWeekdayMatch(timeOfTheDay, duration, tz, null, DateTimeOffset.MinValue, null, weekdays);
     }
 
     public RepeatEventCalculatorScenario WithDayOfMonthMatch(
@@ -38,7 +54,8 @@ public class RepeatEventCalculatorScenario
             Repeat.NewDayOfMonth(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
-                new DayOfMonth(dayOfMonth)),
+                new DayOfMonth(dayOfMonth),
+                TimeZoneInfo.Utc.Id),
             new OpenPeriod(DateTimeOffset.MinValue, null), new object());
 
         return this;

@@ -1,4 +1,6 @@
-﻿namespace Webinex.Calendar.Common;
+﻿using NodaTime;
+
+namespace Webinex.Calendar.Common;
 
 public class Weekday : Equatable
 {
@@ -58,19 +60,41 @@ public class Weekday : Equatable
         return ORDERED_VALUES.ElementAt(nextOrderIndex);
     }
 
+    private static readonly IDictionary<Weekday, DayOfWeek> DAY_OF_WEEKS = new Dictionary<Weekday, DayOfWeek>
+    {
+        [Sunday] = DayOfWeek.Sunday,
+        [Monday] = DayOfWeek.Monday,
+        [Tuesday] = DayOfWeek.Tuesday,
+        [Wednesday] = DayOfWeek.Wednesday,
+        [Thursday] = DayOfWeek.Thursday,
+        [Friday] = DayOfWeek.Friday,
+        [Saturday] = DayOfWeek.Saturday,
+    };
+
     public static Weekday From(DayOfWeek dayOfWeek)
     {
-        return dayOfWeek switch
-        {
-            DayOfWeek.Sunday => Sunday,
-            DayOfWeek.Monday => Monday,
-            DayOfWeek.Tuesday => Tuesday,
-            DayOfWeek.Wednesday => Wednesday,
-            DayOfWeek.Thursday => Thursday,
-            DayOfWeek.Friday => Friday,
-            DayOfWeek.Saturday => Saturday,
-            _ => throw new ArgumentOutOfRangeException(nameof(dayOfWeek), dayOfWeek, "Not found"),
-        };
+        return new Weekday(DAY_OF_WEEKS.First(x => x.Value == dayOfWeek).Key.Value);
+    }
+
+    public DayOfWeek ToDayOfWeek()
+    {
+        return DAY_OF_WEEKS[this];
+    }
+
+    private static readonly IDictionary<Weekday, IsoDayOfWeek> ISO_DAY_OF_WEEKS = new Dictionary<Weekday, IsoDayOfWeek>
+    {
+        [Monday] = IsoDayOfWeek.Monday,
+        [Tuesday] = IsoDayOfWeek.Tuesday,
+        [Wednesday] = IsoDayOfWeek.Wednesday,
+        [Thursday] = IsoDayOfWeek.Thursday,
+        [Friday] = IsoDayOfWeek.Friday,
+        [Saturday] = IsoDayOfWeek.Saturday,
+        [Sunday] = IsoDayOfWeek.Sunday,
+    };
+
+    internal IsoDayOfWeek ToIsoDayOfWeek()
+    {
+        return ISO_DAY_OF_WEEKS[this];
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

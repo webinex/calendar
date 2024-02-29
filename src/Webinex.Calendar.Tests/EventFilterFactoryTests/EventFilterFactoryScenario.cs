@@ -45,6 +45,7 @@ public class EventFilterFactoryScenario
             (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
             (int)TimeSpan.Parse(duration).TotalMinutes,
             new DayOfMonth(dayOfMonth),
+            TimeZoneInfo.Utc.Id,
             new TestEventData());
         var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventType.RecurrentEvent,
             EventRowRepeat.From(@event.Repeat), null, @event.Data, null, false);
@@ -73,6 +74,7 @@ public class EventFilterFactoryScenario
             (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
             (int)TimeSpan.Parse(duration).TotalMinutes,
             weekdays,
+            TimeZoneInfo.Utc.Id,
             new TestEventData());
         var row = new EventRow<TestEventData>(Guid.NewGuid(), @event.Effective, EventType.RecurrentEvent,
             EventRowRepeat.From(@event.Repeat), null, @event.Data, null, false);
@@ -143,7 +145,8 @@ public class EventFilterFactoryScenario
         {
             case EventType.OneTimeEvent:
             {
-                var @event = OneTimeEvent<TestEventData>.New(new Period(start, start.Add(duration)), new TestEventData());
+                var @event =
+                    OneTimeEvent<TestEventData>.New(new Period(start, start.Add(duration)), new TestEventData());
                 return EventRow.From(@event);
             }
 
@@ -181,7 +184,12 @@ public class EventFilterFactoryScenario
 
     private EventRow<TestEventData>[] Filter()
     {
-        var filter = new EventFiltersFactory<TestEventData>(_period.Start, _period.End!.Value, null, DbFilterOptimization.Default);
+        var filter = new EventFilters<TestEventData>(
+                _period.Start,
+                _period.End!.Value,
+                null,
+                TimeZoneInfo.Utc.Id,
+                DbFilterOptimization.Default);
         return filter.Filter(_events.SelectMany(x => x.Value)).ToArray();
     }
 

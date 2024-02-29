@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System;
+using FluentAssertions;
 using NUnit.Framework;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
@@ -45,6 +46,7 @@ public class RecurrentEventTests_LastPeriod_Weekday
             600,
             60,
             new[] { Weekday.Monday },
+            TimeZoneInfo.Utc.Id,
             new object());
     }
 }

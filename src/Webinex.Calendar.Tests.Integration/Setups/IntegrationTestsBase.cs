@@ -106,11 +106,12 @@ create table {SCHEMA_NAME}.{EVENTS_TABLE_NAME}
     MoveTo_End                            datetimeoffset   null,
 
     Repeat_Type                           int              null,
-    Repeat_IntervalMinutes                int              null,
+    Repeat_Interval                       int              null,
     Repeat_DurationMinutes                int              null,
-    Repeat_TimeOfTheDayUtcMinutes         int              null,
+    Repeat_TimeOfTheDayInMinutes          int              null,
     Repeat_OvernightDurationMinutes       int              null,
     Repeat_SameDayLastTime                int              null,
+    Repeat_TimeZone                       nvarchar(50)     null,
     Repeat_Monday                         bit              null,
     Repeat_Tuesday                        bit              null,
     Repeat_Wednesday                      bit              null,
@@ -122,7 +123,7 @@ create table {SCHEMA_NAME}.{EVENTS_TABLE_NAME}
     Data_Name                             nvarchar(200)    not null,
 )
 ";
-        
+
         ExecuteDbCommand(sql);
     }
 

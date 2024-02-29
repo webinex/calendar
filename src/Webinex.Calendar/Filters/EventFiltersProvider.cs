@@ -5,18 +5,22 @@ using Webinex.Calendar.Events;
 
 namespace Webinex.Calendar.Filters;
 
-public class EventFiltersProvider<TData> where TData : class, ICloneable
+public record EventFiltersProvider<TData>(
+    DateTimeOffset From,
+    DateTimeOffset To,
+    Expression<Func<TData, bool>>? DataFilter,
+    string TimeZone,
+    bool OneTime,
+    bool DayOfMonth,
+    bool DayOfWeek,
+    bool Interval,
+    bool State,
+    bool Data,
+    bool Precise)
+    where TData : class, ICloneable
 {
-    public DateTimeOffset From { get; init; }
-    public DateTimeOffset To { get; init; }
-    public Expression<Func<TData, bool>>? DataFilter { get; init; }
-    public bool OneTime { get; init; }
-    public bool DayOfMonth { get; init; }
-    public bool DayOfWeek { get; init; }
-    public bool Interval { get; init; }
-    public bool State { get; init; }
-    public bool Data { get; set; }
-    public bool Precise { get; set; }
+    public bool Data { get; set; } = Data;
+    public bool Precise { get; set; } = Precise;
 
     public Expression<Func<EventRow<TData>, bool>> Create()
     {
@@ -81,7 +85,7 @@ public class EventFiltersProvider<TData> where TData : class, ICloneable
         IEnumerable<Expression<Func<EventRow<TData>, bool>>> GetPredicates()
         {
             if (DayOfWeek)
-                yield return new MatchWeekdayEventFilterFactory<TData>(From, To).Create();
+                yield return new MatchWeekdayEventFilterFactory<TData>(From, To, TimeZone).Create();
 
             if (DayOfMonth)
                 yield return new MatchDayOfMonthEventFilterFactory<TData>(From, To).Create();
@@ -97,15 +101,15 @@ public class EventFiltersProvider<TData> where TData : class, ICloneable
 
         return x => x.Repeat!.Type == EventRowRepeatType.Interval && (
                         x.Effective.Start >= From.TotalMinutesSince1990()
-                        || (rangeMinutes >= x.Repeat!.IntervalMinutes! &&
+                        || (rangeMinutes >= x.Repeat!.Interval! &&
                             (!x.Effective.End.HasValue ||
                              x.Effective.End.Value >= To.TotalMinutesSince1990() ||
-                             x.Effective.End.Value - From.TotalMinutesSince1990() >= x.Repeat.IntervalMinutes!))
+                             x.Effective.End.Value - From.TotalMinutesSince1990() >= x.Repeat.Interval!))
                         || (From.TotalMinutesSince1990() - x.Effective.Start) %
-                        x.Repeat.IntervalMinutes < x.Repeat.DurationMinutes)
+                        x.Repeat.Interval < x.Repeat.DurationMinutes)
 
                     // TODO: s.skalaban check predicate
-                    || (((x.Effective.Start - From.TotalMinutesSince1990()) % x.Repeat.IntervalMinutes) +
-                        x.Repeat.IntervalMinutes + From.TotalMinutesSince1990() < To.TotalMinutesSince1990());
+                    || (((x.Effective.Start - From.TotalMinutesSince1990()) % x.Repeat.Interval) +
+                        x.Repeat.Interval + From.TotalMinutesSince1990() < To.TotalMinutesSince1990());
     }
 }
