@@ -379,38 +379,24 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         if (ids.Length == 1)
         {
             var first = ids.First();
-            var result1 = await queryable
+            return await queryable
                 .Where(x => first.RecurrentEventId == x.RecurrentEventId &&
                             first.EventStart.TotalMinutesSince1990() == x.Effective.Start)
                 .ToArrayAsync();
-            return result1.ToArray();
         }
 
-        // Max number of parameters is 2100 in SQL Server.
-        // So if number of params is more than 500 we do fetch in another way
-        if (ids.Length >= 500)
+        var result = new List<EventRow<TData>>(ids.Length);
+
+        foreach (var chunk in ids.Chunk(500))
         {
-            var min = ids.MinBy(e => e.EventStart)!.EventStart.TotalMinutesSince1990();
-            var max = ids.MaxBy(e => e.EventStart)!.EventStart.TotalMinutesSince1990();
-            var recurrentEventIds = ids.Select(e => e.RecurrentEventId).Distinct().ToArray();
-            var result2 = await queryable.Where(e =>
-                    e.Effective.Start >= min && e.Effective.Start <= max &&
-                    recurrentEventIds.Contains(e.RecurrentEventId!.Value))
-                .ToArrayAsync();
-
-            return result2
-                .Where(x => ids.Any(id =>
-                    id.RecurrentEventId == x.RecurrentEventId &&
-                    id.EventStart.TotalMinutesSince1990() == x.Effective.Start))
-                .ToArray();
+            var filters = FilterRule.Or(
+                chunk.Select(e => FilterRule.And(
+                    FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
+                    FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
+            
+            result.AddRange(await queryable.Where(_recurrentEventRowAskyFieldMap, filters).ToArrayAsync());
         }
 
-        var filters = FilterRule.Or(
-            ids.Select(e => FilterRule.And(
-                FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
-                FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
-
-        var result = await queryable.Where(_recurrentEventRowAskyFieldMap, filters).ToArrayAsync();
         return result.ToArray();
     }
 
@@ -461,7 +447,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DbFilterOptimization? filterOptimization = default)
     {
         if (queryOptions == QueryOptions.TryCache &&
-            _cache.TryGetAll(from, to, dataFilterRule, filterOptimization, out var rows))
+            _cache.TryGetAll(from, to, dataFilterRule, out var rows))
             return rows!.Value.ToArray();
 
         return await GetRowsFromDbContextAsync(from, to, dataFilterRule, filterOptimization);
@@ -475,7 +461,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
         var filters = new EventFilters<TData>(from, to, dataFilter, _settings.TimeZone,
-            filterOptimization ?? _settings.DbFilterOptimization);
+            filterOptimization ?? _settings.DbQueryOptimization);
 
         var result = await filters.Filter(_dbContext.Events.AsQueryable());
 

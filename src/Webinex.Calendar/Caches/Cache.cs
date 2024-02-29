@@ -13,7 +13,6 @@ internal interface ICache<TData> where TData : class, ICloneable
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule,
-        DbFilterOptimization? filterOptimization,
         out ImmutableArray<EventRow<TData>>? result);
 
     void Push(IEnumerable<CacheEvent<TData>> values);
@@ -48,7 +47,6 @@ internal class Cache<TData> : ICache<TData>
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule,
-        DbFilterOptimization? filterOptimization,
         out ImmutableArray<EventRow<TData>>? result)
     {
         result = null;
@@ -61,8 +59,7 @@ internal class Cache<TData> : ICache<TData>
             cacheEvent.TryApply(dictionary);
 
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var filters = new EventFilters<TData>(from, to, dataFilter, _settings.TimeZone,
-            filterOptimization ?? _settings.DbFilterOptimization);
+        var filters = new EventFilters<TData>(from, to, dataFilter, _settings.TimeZone, DbFilterOptimization.Default);
         result = filters.Filter(dictionary.Values).ToImmutableArray();
         return true;
     }

@@ -43,7 +43,7 @@ internal class EventFilters<TData> where TData : class, ICloneable
             Data: true,
             Precise: true);
 
-        return enumerable.Where(provider.Create().Compile()).ToArray();
+        return enumerable.Where(provider.Create().Compile());
     }
 
     public async Task<IEnumerable<EventRow<TData>>> Filter(IQueryable<EventRow<TData>> queryable)
@@ -72,6 +72,6 @@ internal class EventFilters<TData> where TData : class, ICloneable
         provider.Precise = true;
         provider.Data = true;
 
-        return dbResult.Where(provider.Create().Compile()).ToArray();
+        return dbResult.Where(provider.Create().Compile());
     }
 }

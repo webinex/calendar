@@ -13,7 +13,6 @@ internal class NoCache<TData> : ICache<TData>
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule,
-        DbFilterOptimization? filterOptimization,
         out ImmutableArray<EventRow<TData>>? result)
     {
         result = null;

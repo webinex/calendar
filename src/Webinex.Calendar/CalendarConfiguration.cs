@@ -65,7 +65,7 @@ internal class CalendarConfiguration : ICalendarConfiguration
 
     public ICalendarConfiguration UseDbFilterOptimization(DbFilterOptimization optimization)
     {
-        Settings.DbFilterOptimization = optimization;
+        Settings.DbQueryOptimization = optimization;
         return this;
     }
 
@@ -155,7 +155,7 @@ internal class CalendarConfiguration : ICalendarConfiguration
     private class CalendarSettings : ICalendarSettings
     {
         public string TimeZone { get; set; } = TimeZoneInfo.Utc.Id;
-        public DbFilterOptimization DbFilterOptimization { get; set; } = DbFilterOptimization.Default;
+        public DbFilterOptimization DbQueryOptimization { get; set; } = DbFilterOptimization.Default;
     }
 
     private class CalendarSettings<TData> : CalendarSettings, ICalendarSettings<TData>
