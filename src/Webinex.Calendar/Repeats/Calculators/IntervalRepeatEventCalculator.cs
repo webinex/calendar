@@ -25,12 +25,14 @@ internal class IntervalRepeatEventCalculator : RepeatEventCalculatorBase
         };
         calendar.Events.Add(calendarEvent);
 
-        var occurrences = calendar.GetOccurrences(
+        var occurrences = calendar.GetOccurrencesEnumerable(
             new CalDateTime(start.DateTime.Unspecified(), "UTC"),
-            end.HasValue ? new CalDateTime(end.Value.DateTime.Unspecified(), "UTC").Subtract(TimeSpan.FromMilliseconds(1)) : null);
+            end.HasValue
+                ? new CalDateTime(end.Value.DateTime.Unspecified(), "UTC").Subtract(TimeSpan.FromMilliseconds(1))
+                : null);
 
-        return occurrences.Select(x =>
-                new Period(x.Period.StartTime.AsDateTimeOffset, x.Period.EndTime.AsDateTimeOffset))
+        return occurrences
+            .Select(x => new Period(x.Period.StartTime.AsDateTimeOffset, x.Period.EndTime.AsDateTimeOffset))
             .Where(x => period.Intersects(x));
     }
 
@@ -46,6 +48,8 @@ internal class IntervalRepeatEventCalculator : RepeatEventCalculatorBase
 
             RecurrenceRules =
             {
+                // Don't remove Until date, otherwise CalendarExtensions.GetOccurrencesEnumerable won't work correctly,
+                // because it checks Until dates of rules
                 new RecurrencePattern(FrequencyType.Minutely, interval: @event.Repeat.Interval.IntervalMinutes)
                 {
                     Until = @event.Effective.End?.DateTime ?? DateTime.MaxValue,

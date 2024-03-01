@@ -184,9 +184,13 @@ public class EventFilterFactoryScenario
 
     private EventRow<TestEventData>[] Filter()
     {
-        var filter = EventFilterFactory.Create<TestEventData>(_period.Start, _period.End!.Value, null, TimeZoneInfo.Utc.Id)
-            .Compile();
-        return _events.SelectMany(x => x.Value).Where(filter).ToArray();
+        var filter = new DbQuery<TestEventData>(
+                _period.Start,
+                _period.End!.Value,
+                null,
+                TimeZoneInfo.Utc.Id,
+                DbFilterOptimization.Default);
+        return filter.ToArray(_events.SelectMany(x => x.Value));
     }
 
     public void ToBeEmpty()

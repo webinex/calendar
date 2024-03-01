@@ -32,13 +32,14 @@ internal class DayOfMonthRepeatEventCalculator : RepeatEventCalculatorBase
             End = new CalDateTime(eventEnd.ToDateTimeUnspecified()),
         };
 
+        // Don't remove Until date, otherwise CalendarExtensions.GetOccurrencesEnumerable won't work correctly,
+        // because it checks Until dates of rules
         var recurrencePattern = new RecurrencePattern(FrequencyType.Monthly)
         {
             ByMonthDay = new List<int>
             {
                 @event.Repeat.DayOfMonth.DayOfMonth.Value,
             },
-
             Until = effectiveEnd?.ToDateTimeUnspecified() ?? DateTime.MaxValue,
         };
 

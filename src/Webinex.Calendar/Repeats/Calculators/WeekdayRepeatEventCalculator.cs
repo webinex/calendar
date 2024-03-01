@@ -30,6 +30,9 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
         {
             Start = new CalDateTime(eventStart.ToDateTimeUnspecified(), "UTC"),
             End = new CalDateTime(eventEnd.ToDateTimeUnspecified(), "UTC"),
+            
+            // Don't remove Until date, otherwise CalendarExtensions.GetOccurrencesEnumerable won't work correctly,
+            // because it checks Until dates of rules
             RecurrenceRules =
             {
                 new RecurrencePattern(FrequencyType.Weekly, @event.Repeat.Weekday.Interval ?? 1)

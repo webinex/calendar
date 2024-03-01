@@ -7,6 +7,7 @@ namespace Webinex.Calendar.Caches;
 internal class NoCache<TData> : ICache<TData>
     where TData : class, ICloneable
 {
+
     public bool TryGetAll(
         DateTimeOffset from,
         DateTimeOffset to,

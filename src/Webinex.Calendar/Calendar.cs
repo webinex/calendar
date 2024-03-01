@@ -194,7 +194,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
         if (@event.Repeat.TimeZone() != null && !@event.Repeat.TimeZone()!.Equals(_settings.TimeZone))
             throw new InvalidOperationException("TimeZone might match .UseTimeZone() specified for calendar.");
-        
+
         var row = EventRow<TData>.NewRecurrentEvent(@event.Id, @event.Repeat, @event.Effective,
             (TData)@event.Data.Clone());
         await _dbContext.Events.AddAsync(row);
@@ -364,46 +364,55 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
                 new RecurrentEventStateId(x.RecurrentEventId!.Value, Constants.J1_1990.AddMinutes(x.Effective.Start))))
             .ToArray();
 
-        if (!surplus.Any())
-        {
-            return local.Select(x => x.ToRecurrentEventState()).ToArray();
-        }
+        var surplusRows = await GetDbManyStatesAsync(surplus);
+
+        return local.Concat(surplusRows).Select(x => x.ToRecurrentEventState()).ToArray();
+    }
+
+    private async Task<EventRow<TData>[]> GetDbManyStatesAsync(RecurrentEventStateId[] ids)
+    {
+        if (!ids.Any())
+            return Array.Empty<EventRow<TData>>();
 
         var queryable = _dbContext.Events.Where(x => x.Type == EventType.RecurrentEventState);
 
-        if (surplus.Length == 1)
+        if (ids.Length == 1)
         {
-            var first = surplus.First();
-            queryable = queryable
+            var first = ids.First();
+            return await queryable
                 .Where(x => first.RecurrentEventId == x.RecurrentEventId &&
-                            first.EventStart.TotalMinutesSince1990() == x.Effective.Start);
+                            first.EventStart.TotalMinutesSince1990() == x.Effective.Start)
+                .ToArrayAsync();
         }
-        else
+
+        var result = new List<EventRow<TData>>(ids.Length);
+
+        foreach (var chunk in ids.Chunk(500))
         {
             var filters = FilterRule.Or(
-                surplus.Select(e => FilterRule.And(
+                chunk.Select(e => FilterRule.And(
                     FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
                     FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
 
-            queryable = queryable.Where(_recurrentEventRowAskyFieldMap, filters);
+            result.AddRange(await queryable.Where(_recurrentEventRowAskyFieldMap, filters).ToArrayAsync());
         }
 
-        var surplusRows = await queryable.ToArrayAsync();
-
-        return local.Concat(surplusRows).Select(x => x.ToRecurrentEventState()).ToArray();
+        return result.ToArray();
     }
 
     public async Task<Event<TData>[]> GetCalculatedAsync(
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule = null,
-        QueryOptions queryOptions = QueryOptions.Db)
+        QueryOptions queryOptions = QueryOptions.Db,
+        DbFilterOptimization? filterOptimization = default)
     {
         var period = new Period(from, to);
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        
+
         // +/- 1 hour needed to ensure DST transition events loaded, it would be additionally filtered at the end of method
-        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from.AddHours(-1), to.AddHours(1), dataFilterRule, queryOptions);
+        var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from.AddHours(-1), to.AddHours(1), dataFilterRule,
+            queryOptions);
         var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent).ToArray();
 
         var recurrentEventStates = rows
@@ -434,25 +443,27 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DateTimeOffset from,
         DateTimeOffset to,
         FilterRule? dataFilterRule = null,
-        QueryOptions queryOptions = QueryOptions.Db)
+        QueryOptions queryOptions = QueryOptions.Db,
+        DbFilterOptimization? filterOptimization = default)
     {
-        if (queryOptions == QueryOptions.TryCache && _cache.TryGetAll(from, to, dataFilterRule, out var rows))
+        if (queryOptions == QueryOptions.TryCache &&
+            _cache.TryGetAll(from, to, dataFilterRule, out var rows))
             return rows!.Value.ToArray();
 
-        return await GetRowsFromDbContextAsync(from, to, dataFilterRule);
+        return await GetRowsFromDbContextAsync(from, to, dataFilterRule, filterOptimization);
     }
 
     private async Task<EventRow<TData>[]> GetRowsFromDbContextAsync(
         DateTimeOffset from,
         DateTimeOffset to,
-        FilterRule? dataFilterRule = null)
+        FilterRule? dataFilterRule = null,
+        DbFilterOptimization? filterOptimization = default)
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
+        var filters = new DbQuery<TData>(from, to, dataFilter, _settings.TimeZone,
+            filterOptimization ?? _settings.DbQueryOptimization);
 
-        var queryable = _dbContext.Events.AsQueryable()
-            .Where(EventFilterFactory.Create(from, to, dataFilter, _settings.TimeZone));
-
-        return await queryable.ToArrayAsync();
+        return await filters.ToArrayAsync(_dbContext.Events.AsQueryable());
     }
 
     private async Task<EventRow<TData>?> FindAsync(Guid id, EventType? type = null)

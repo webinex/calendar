@@ -22,7 +22,10 @@ public class CalendarExtensionsTests
             End = new CalDateTime(start.AddHours(1).DateTime, "UTC"),
             RecurrenceRules =
             {
-                new RecurrencePattern(FrequencyType.Monthly),
+                new RecurrencePattern(FrequencyType.Monthly)
+                {
+                    Until = DateTime.MaxValue,
+                },
             },
         };
 
