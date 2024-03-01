@@ -1,7 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Webinex.Asky;
 using Webinex.Calendar.DataAccess;
-using Webinex.Calendar.Filters;
 
 namespace Webinex.Calendar.Caches;
 

@@ -59,8 +59,8 @@ internal class Cache<TData> : ICache<TData>
             cacheEvent.TryApply(dictionary);
 
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var filters = new EventFilters<TData>(from, to, dataFilter, _settings.TimeZone, DbFilterOptimization.Default);
-        result = filters.Filter(dictionary.Values).ToImmutableArray();
+        var filters = new DbQuery<TData>(from, to, dataFilter, _settings.TimeZone, DbFilterOptimization.Default);
+        result = filters.ToArray(dictionary.Values).ToImmutableArray();
         return true;
     }
 

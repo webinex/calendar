@@ -24,8 +24,9 @@ public record EventFiltersProvider<TData>(
 
     public Expression<Func<EventRow<TData>, bool>> Create()
     {
-        if (!OneTime && !DayOfMonth && !DayOfWeek && !Interval && !State)
-            throw new ArgumentException("At least one type of events must be set");
+        if (!OneTime && !DayOfMonth && !DayOfWeek && !Interval)
+            throw new ArgumentException(
+                "All event Types are disabled. You must enable at least one of them (OneTime/DayOfMonth/DayOfWeek/Interval)");
 
         Expression<Func<EventRow<TData>, bool>> @base = x =>
             x.Effective.Start < To.TotalMinutesSince1990() &&

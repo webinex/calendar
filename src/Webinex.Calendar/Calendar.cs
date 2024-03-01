@@ -393,7 +393,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
                 chunk.Select(e => FilterRule.And(
                     FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
                     FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
-            
+
             result.AddRange(await queryable.Where(_recurrentEventRowAskyFieldMap, filters).ToArrayAsync());
         }
 
@@ -460,12 +460,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         DbFilterOptimization? filterOptimization = default)
     {
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var filters = new EventFilters<TData>(from, to, dataFilter, _settings.TimeZone,
+        var filters = new DbQuery<TData>(from, to, dataFilter, _settings.TimeZone,
             filterOptimization ?? _settings.DbQueryOptimization);
 
-        var result = await filters.Filter(_dbContext.Events.AsQueryable());
-
-        return result.ToArray();
+        return await filters.ToArrayAsync(_dbContext.Events.AsQueryable());
     }
 
     private async Task<EventRow<TData>?> FindAsync(Guid id, EventType? type = null)
