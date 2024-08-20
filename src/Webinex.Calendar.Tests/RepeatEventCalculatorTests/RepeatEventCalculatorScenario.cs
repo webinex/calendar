@@ -47,7 +47,8 @@ public class RepeatEventCalculatorScenario
     public RepeatEventCalculatorScenario WithDayOfMonthMatch(
         string timeOfTheDay,
         string duration,
-        int dayOfMonth)
+        int dayOfMonth,
+        string? tz = default)
     {
         _event = new RecurrentEvent<object>(
             Guid.NewGuid(),
@@ -55,7 +56,7 @@ public class RepeatEventCalculatorScenario
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
                 new DayOfMonth(dayOfMonth),
-                TimeZoneInfo.Utc.Id),
+                tz ?? TimeZoneInfo.Utc.Id),
             new OpenPeriod(DateTimeOffset.MinValue, null), new object());
 
         return this;

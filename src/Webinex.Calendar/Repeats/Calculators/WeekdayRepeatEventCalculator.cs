@@ -28,6 +28,8 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
 
         return new CalendarEvent
         {
+            // We use UTC, because we want to remove all timezone manipulations from ICal.Net.
+            // We only need to get times, so to do that we work with UTC timezone and then in Map convert to actual timezone
             Start = new CalDateTime(eventStart.ToDateTimeUnspecified(), "UTC"),
             End = new CalDateTime(eventEnd.ToDateTimeUnspecified(), "UTC"),
             
@@ -65,11 +67,12 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
     private Period Map(RecurrentEvent @event, Occurrence x)
     {
         var dtTz = DateTimeZoneProviders.Tzdb[@event.Repeat.Weekday!.TimeZone];
-        var startTz = x.Period.StartTime.Value.Unspecified().ToLocalDateTime().InZoneLeniently(dtTz);
+        // We don't care about timezone of x.Period.StartTime, because we have TimeZoneinfo in @event.Repeat.Weekday.TimeZone
+        // Here we just need to get times from occurrences and convert then to TimeZone times
+        var start = x.Period.StartTime.Value.ToLocalDateTime().InZoneLeniently(dtTz);
+        var end = start.PlusMinutes(@event.Repeat.Weekday.DurationMinutes);
 
-        return new Period(
-            startTz.ToDateTimeOffset().ToUtc(),
-            startTz.ToDateTimeOffset().ToUtc().AddMinutes(@event.Repeat.Weekday.DurationMinutes));
+        return new Period(start.ToDateTimeOffset().ToUniversalTime(), end.ToDateTimeOffset().ToUniversalTime());
     }
 
     private (LocalDateTime start, LocalDateTime? end) Tz(OpenPeriod period, string tz)
@@ -81,7 +84,6 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
 
     private LocalDateTime Tz(DateTimeOffset value, string tz)
     {
-        var localDateTime = value.ToUtc().DateTime.ToLocalDateTime();
-        return localDateTime.InZoneLeniently(DateTimeZoneProviders.Tzdb[tz]).LocalDateTime;
+        return value.ToInstant().InZone(DateTimeZoneProviders.Tzdb[tz]).LocalDateTime;
     }
 }
