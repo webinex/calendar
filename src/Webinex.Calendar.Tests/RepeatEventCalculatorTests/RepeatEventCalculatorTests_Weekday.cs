@@ -68,7 +68,8 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2023-10-22T00:00:00+000"), DateTimeOffset.Parse("2023-11-05T02:30:00+000"))
-            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2023-10-22T00:30:00+000"), null, Weekday.Sunday)
+            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2023-10-22T00:30:00+000"),
+                null, Weekday.Sunday)
             .ToBeEquivalent(
                 new Period(
                     DateTimeOffset.Parse("2023-10-22T00:30:00+000"),
@@ -86,7 +87,8 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2024-03-24T01:30:00+000"), DateTimeOffset.Parse("2024-04-07T02:30:00+000"))
-            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2024-03-24T01:30:00+000"), null, Weekday.Sunday)
+            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2024-03-24T01:30:00+000"),
+                null, Weekday.Sunday)
             .ToBeEquivalent(
                 new Period(
                     DateTimeOffset.Parse("2024-03-24T01:30:00+000"),
@@ -126,14 +128,19 @@ public class RepeatEventCalculatorTests_Weekday
                     DateTimeOffset.Parse("2023-11-22T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-22T02:00:00+000")));
     }
-    
+
     [Test]
     public void WhenMidnight_ShouldMatch()
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2024-08-23T00:00:00+000"), DateTimeOffset.Parse("2024-08-28T00:00:00+000"))
-            .WithWeekdayMatch("00:00", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
-                DateTimeOffset.Parse("2024-08-26T00:00:00+000"), Weekday.Monday)
+            .WithWeekdayMatch(
+                timeOfTheDay: "00:00",
+                duration: "1:00",
+                tz: "Europe/London",
+                interval: 1,
+                effectiveStart: DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
+                effectiveEnd: DateTimeOffset.Parse("2024-08-26T00:00:00+000"), Weekday.Monday)
             .ToBeEquivalent(
                 new Period(
                     DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
