@@ -40,7 +40,8 @@ internal class DayOfMonthRepeatEventCalculator : RepeatEventCalculatorBase
             {
                 @event.Repeat.DayOfMonth.DayOfMonth.Value,
             },
-            Until = effectiveEnd?.ToDateTimeUnspecified() ?? DateTime.MaxValue,
+            // We have to do this, because Until is inclusive
+            Until = effectiveEnd?.ToDateTimeUnspecified().AddMilliseconds(-1) ?? DateTime.MaxValue,
         };
 
         calendarEvent.RecurrenceRules.Add(recurrencePattern);

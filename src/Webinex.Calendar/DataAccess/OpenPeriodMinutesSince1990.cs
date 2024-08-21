@@ -56,6 +56,8 @@ public class OpenPeriodMinutesSince1990 : Equatable
         return NotEqualOperator(left, right);
     }
 
+    public override string ToString() => ToOpenPeriod().ToString();
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Start;

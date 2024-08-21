@@ -63,6 +63,8 @@ public class OpenPeriod : Equatable
         return NotEqualOperator(left, right);
     }
 
+    public override string ToString() => $"{Start}-{End}";
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Start;

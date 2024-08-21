@@ -52,7 +52,8 @@ internal class IntervalRepeatEventCalculator : RepeatEventCalculatorBase
                 // because it checks Until dates of rules
                 new RecurrencePattern(FrequencyType.Minutely, interval: @event.Repeat.Interval.IntervalMinutes)
                 {
-                    Until = @event.Effective.End?.DateTime ?? DateTime.MaxValue,
+                    // We have to do this, because Until is inclusive
+                    Until = @event.Effective.End?.DateTime.AddMilliseconds(-1) ?? DateTime.MaxValue,
                 },
             },
         };

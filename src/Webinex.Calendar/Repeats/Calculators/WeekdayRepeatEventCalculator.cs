@@ -39,7 +39,8 @@ internal class WeekdayRepeatEventCalculator : RepeatEventCalculatorBase
             {
                 new RecurrencePattern(FrequencyType.Weekly, @event.Repeat.Weekday.Interval ?? 1)
                 {
-                    Until = effectiveEndTz?.ToDateTimeUnspecified() ?? DateTime.MaxValue,
+                    // We have to do this, because Until is inclusive
+                    Until = effectiveEndTz?.ToDateTimeUnspecified().AddMilliseconds(-1) ?? DateTime.MaxValue,
                     ByDay = weekdays.ToList(),
                 },
             },
