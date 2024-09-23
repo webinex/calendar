@@ -9,6 +9,7 @@ public interface IRecurrentEventCalendarInstance<TData>
 {
     Task<RecurrentEvent<TData>?> GetAsync(Guid id);
     Task<RecurrentEvent<TData>[]> GetManyAsync(IEnumerable<Guid> ids);
+    Task<RecurrentEvent<TData>[]> GetAllAsync(FilterRule filter);
     Task<RecurrentEvent<TData>[]> GetManyAsync(FilterRule filter, SortRule? sortRule = null, PagingRule? pagingRule = null);
     Task<RecurrentEvent<TData>> AddAsync(RecurrentEvent<TData> @event);
     Task<RecurrentEvent<TData>[]> AddRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
