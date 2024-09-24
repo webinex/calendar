@@ -54,20 +54,9 @@ public record EventFiltersProvider<TData>(
         if (!State)
             return null;
 
-        Expression<Func<EventRow<TData>, bool>> expression = x =>
-            x.Type == EventType.RecurrentEventState && (
-                (x.Effective.Start < To.TotalMinutesSince1990() &&
-                 x.Effective.End!.Value > From.TotalMinutesSince1990())
-                || (x.MoveTo != null && x.MoveTo.Start < To && x.MoveTo.End > From));
-
-        if (!Data || DataFilter == null)
-            return expression;
-
-        return Expressions.And(
-            expression,
-            Expressions.Or(
-                Expressions.Child<EventRow<TData>, TData>(x => x.Data, DataFilter),
-                Expressions.Child<EventRow<TData>, TData>(x => x.RecurrentEvent!.Data, DataFilter)));
+        return x => x.Type == EventType.RecurrentEventState && (
+            (x.Effective.Start < To.TotalMinutesSince1990() && x.Effective.End!.Value > From.TotalMinutesSince1990()) ||
+            (x.MoveTo != null && x.MoveTo.Start < To && x.MoveTo.End > From));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateRecurrentEventFilter()
