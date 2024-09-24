@@ -28,17 +28,21 @@ public record EventFiltersProvider<TData>(
             throw new ArgumentException(
                 "All event Types are disabled. You must enable at least one of them (OneTime/DayOfMonth/DayOfWeek/Interval)");
 
-        Expression<Func<EventRow<TData>, bool>> @base = x =>
+        Expression<Func<EventRow<TData>, bool>> recurrentEventPeriodFilter = x =>
             x.Effective.Start < To.TotalMinutesSince1990() &&
             (x.Effective.End > From.TotalMinutesSince1990() || x.Effective.End == null);
 
-        if (Data && DataFilter != null)
-            @base = Expressions.And(@base, Expressions.Child<EventRow<TData>, TData>(x => x.Data, DataFilter));
-
-        return Expressions.Or(
-            Expressions.And(@base,
+        var periodsFilter = Expressions.Or(
+            Expressions.And(
+                recurrentEventPeriodFilter,
                 Expressions.Or(OneTimeEventFilter() ?? (_ => false), CreateRecurrentEventFilter() ?? (_ => false))),
             CreateRecurrentEventStateFilter() ?? (_ => false));
+
+        // we can apply filter by data on the root level, because both RecurrentEvent and RecurrentEventState has Data property
+        // and RecurrentEventState.Data overrides parent RecurrentEvent.Data
+        return Data && DataFilter != null
+            ? Expressions.And(Expressions.Child<EventRow<TData>, TData>(x => x.Data, DataFilter), periodsFilter)
+            : periodsFilter;
     }
 
     private Expression<Func<EventRow<TData>, bool>>? OneTimeEventFilter()
