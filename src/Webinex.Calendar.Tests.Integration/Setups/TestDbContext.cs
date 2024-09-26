@@ -20,10 +20,10 @@ public class TestDbContext : DbContext, ICalendarDbContext<EventData>
             row.HasKey(x => x.Id);
 
             row
-                .HasOne(x => x.RecurrentEvent)
-                .WithOne()
-                .HasForeignKey<EventRow<EventData>>(x => x.RecurrentEventId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(e => e.RecurrentEvent)
+                .WithMany()
+                .HasForeignKey(x => x.RecurrentEventId)
+                .OnDelete(DeleteBehavior.ClientCascade);
 
             row.OwnsOne(x => x.Effective, effective =>
             {

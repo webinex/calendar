@@ -54,20 +54,23 @@ public record EventFiltersProvider<TData>(
         if (!State)
             return null;
 
-        Expression<Func<EventRow<TData>, bool>> expression = x =>
+        Expression<Func<EventRow<TData>, bool>> periodPredicate = x =>
             x.Type == EventType.RecurrentEventState && (
                 (x.Effective.Start < To.TotalMinutesSince1990() &&
                  x.Effective.End!.Value > From.TotalMinutesSince1990())
                 || (x.MoveTo != null && x.MoveTo.Start < To && x.MoveTo.End > From));
 
         if (!Data || DataFilter == null)
-            return expression;
+            return periodPredicate;
 
-        return Expressions.And(
-            expression,
-            Expressions.Or(
-                Expressions.Child<EventRow<TData>, TData>(x => x.Data, DataFilter),
-                Expressions.Child<EventRow<TData>, TData>(x => x.RecurrentEvent!.Data, DataFilter)));
+        // We need this predicate here, because we might have in RecurrentEvent.Data value "1", but in RecurrentEventState.Data value "4"
+        // and search by "1". In this case we should get nothing, because "4" overrides RecurrentEvent.Data. In this case we have to return to client both values
+        // RecurrentEvent and RecurrentEventState
+        var datePredicate = Expressions.Or(
+            Expressions.Child<EventRow<TData>, TData>(x => x.Data, DataFilter),
+            Expressions.Child<EventRow<TData>, TData>(x => x.RecurrentEvent!.Data, DataFilter));
+
+        return Expressions.And(periodPredicate, datePredicate);
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateRecurrentEventFilter()

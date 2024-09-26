@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.Events;
 using Webinex.Calendar.Repeats;
@@ -49,6 +50,10 @@ public class EventRow<TData>
     public bool Cancelled { get; protected set; }
     public TData Data { get; protected set; } = null!;
     public Period? MoveTo { get; protected set; }
+
+    [MemberNotNullWhen(true, nameof(RecurrentEventId))]
+    internal bool IsRecurrentEventState() => Type == EventType.RecurrentEventState;
+    
     internal EventRow<TData>? RecurrentEvent { get; set; }
 
     internal EventRowId GetEventRowId() => new EventRowId(Type, Id, RecurrentEventId, Effective.ToOpenPeriod().Start);
