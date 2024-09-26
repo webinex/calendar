@@ -10,7 +10,13 @@ public interface IRecurrentEventCalendarInstance<TData>
     Task<RecurrentEvent<TData>?> GetAsync(Guid id);
     Task<RecurrentEvent<TData>[]> GetManyAsync(IEnumerable<Guid> ids);
     Task<RecurrentEvent<TData>[]> GetAllAsync(FilterRule filter);
-    Task<RecurrentEvent<TData>[]> GetManyAsync(FilterRule filter, SortRule? sortRule = null, PagingRule? pagingRule = null);
+
+    [Obsolete("Please use 'GetAllAsync' instead. This method doesn't use local changes")]
+    Task<RecurrentEvent<TData>[]> GetManyAsync(
+        FilterRule filter,
+        SortRule? sortRule = null,
+        PagingRule? pagingRule = null);
+
     Task<RecurrentEvent<TData>> AddAsync(RecurrentEvent<TData> @event);
     Task<RecurrentEvent<TData>[]> AddRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
     Task MoveAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, Period moveTo);
@@ -21,7 +27,7 @@ public interface IRecurrentEventCalendarInstance<TData>
     Task DeleteRangeAsync(IEnumerable<RecurrentEvent<TData>> events);
 
     Task<RecurrentEventState<TData>?> GetStateAsync(RecurrentEventStateId id);
-    
+
     /// <summary>
     /// Returns all event states according to filters
     /// </summary>
@@ -37,7 +43,7 @@ public interface IRecurrentEventCalendarInstance<TData>
     /// </list>
     /// </param>
     Task<RecurrentEventState<TData>[]> GetAllStatesAsync(FilterRule filter);
-    
+
     Task<RecurrentEventState<TData>[]> GetManyStatesAsync(IEnumerable<RecurrentEventStateId> ids);
     Task<Event<TData>> SaveDataAsync(RecurrentEvent<TData> @event, DateTimeOffset eventStart, TData data);
     Task<Event<TData>> AddDataAsync(RecurrentEvent<TData> @event, DateTimeOffset start, TData data);

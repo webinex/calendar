@@ -100,14 +100,11 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         filter = filter.Replace(new RecurrentEventFilterRuleVisitor());
 
-        var local = Filter(_dbContext.Events.Local.AsQueryable()).ToArray();
-        var db = await Filter(_dbContext.Events.AsQueryable()).ToArrayAsync();
-
-        return local.Concat(db.Except(local)).Select(x => x.ToRecurrentEvent()).ToArray();
-
-        IQueryable<EventRow<TData>> Filter(IQueryable<EventRow<TData>> q) => q
+        var result = await FilterWithLocalChanges(q => q
             .Where(x => x.Type == EventType.RecurrentEvent)
-            .Where(_recurrentEventRowAskyFieldMap, filter);
+            .Where(_recurrentEventRowAskyFieldMap, filter));
+
+        return result.Select(x => x.ToRecurrentEvent()).ToArray();
     }
 
     async Task<RecurrentEvent<TData>[]> IRecurrentEventCalendarInstance<TData>.GetManyAsync(
@@ -263,7 +260,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         row.Effective = new OpenPeriodMinutesSince1990(row.Effective.Start, since.TotalMinutesSince1990());
         _cache.PushUpdate(row);
 
-        var states = await FindStates();
+        var states = await FilterWithLocalChanges(q => q
+            .Where(x => x.Type == EventType.RecurrentEventState && x.RecurrentEventId == id)
+            .Where(x => x.Effective.Start >= since.TotalMinutesSince1990() || x.MoveTo!.Start >= since));
+        states = states.ToArray();
 
         var remove = states.Where(x =>
                 x.Effective.Start >= since.TotalMinutesSince1990() &&
@@ -281,18 +281,6 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         _dbContext.Events.RemoveRange(remove);
         _cache.PushDelete(remove);
         return;
-
-        async Task<EventRow<TData>[]> FindStates()
-        {
-            var localStates = FilterStates(_dbContext.Events.Local.AsQueryable()).ToArray();
-            var dbStates = await FilterStates(_dbContext.Events).ToArrayAsync();
-
-            return localStates.Concat(dbStates.Except(localStates)).ToArray();
-            
-            IQueryable<EventRow<TData>> FilterStates(IQueryable<EventRow<TData>> q) => q
-                .Where(x => x.Type == EventType.RecurrentEventState && x.RecurrentEventId == id)
-                .Where(x => x.Effective.Start >= since.TotalMinutesSince1990() || x.MoveTo!.Start >= since);
-        }
     }
 
     async Task IRecurrentEventCalendarInstance<TData>.CancelAppearanceAsync(
@@ -321,9 +309,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     async Task IRecurrentEventCalendarInstance<TData>.DeleteAsync(Guid recurrentEventId)
     {
-        var localRows = Filter(_dbContext.Events.Local.AsQueryable()).ToArray();
-        var dbRows = await Filter(_dbContext.Events.AsQueryable()).ToArrayAsync();
-        var rows = localRows.Concat(dbRows.Except(localRows)).ToArray();
+        var rows = await FilterWithLocalChanges(q =>
+            q.Where(x => (x.Type == EventType.RecurrentEvent && x.Id == recurrentEventId) ||
+                         (x.Type == EventType.RecurrentEventState && x.RecurrentEventId == recurrentEventId)));
+        rows = rows.ToArray();
 
         var recurrentEvent = rows.FirstOrDefault(x => x.Id == recurrentEventId)?.ToRecurrentEvent();
         if (recurrentEvent == null)
@@ -331,14 +320,6 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
         _dbContext.Events.RemoveRange(rows);
         _cache.PushDelete(rows);
-
-        IQueryable<EventRow<TData>> Filter(IQueryable<EventRow<TData>> q)
-        {
-            return q
-                .Where(x =>
-                    (x.Type == EventType.RecurrentEvent && x.Id == recurrentEventId) ||
-                    (x.Type == EventType.RecurrentEventState && x.RecurrentEventId == recurrentEventId));
-        }
     }
 
     Task IRecurrentEventCalendarInstance<TData>.DeleteAsync(RecurrentEvent<TData> @event)
@@ -364,15 +345,12 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         filter = filter.Replace(new DateTimeOffsetToMinutesSince1990FilterRuleVisitor(["period.start", "period.end"]));
 
-        var local = Filter(_dbContext.Events.Local.AsQueryable()).ToArray();
-        var db = await Filter(_dbContext.Events.AsQueryable()).ToArrayAsync();
-
-        return local.Concat(db.Except(local)).Select(x => x.ToRecurrentEventState()).ToArray();
-
-        IQueryable<EventRow<TData>> Filter(IQueryable<EventRow<TData>> q) => q
+        var result = await FilterWithLocalChanges(q => q
             .Where(_recurrentEventStateAskyFieldMap, filter)
             .Where(x => x.Type == EventType.RecurrentEventState)
-            .Where(e => !e.Cancelled);
+            .Where(e => !e.Cancelled));
+
+        return result.Select(x => x.ToRecurrentEventState()).ToArray();
     }
 
     async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetManyStatesAsync(
@@ -380,53 +358,14 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     {
         ids = ids.Distinct().ToArray();
 
-        var local = _dbContext.Events.Local.Where(x => x.Type == EventType.RecurrentEventState &&
-                                                       ids.Any(id =>
-                                                           id.RecurrentEventId == x.RecurrentEventId &&
-                                                           x.Effective.Start == id.EventStart.TotalMinutesSince1990()))
-            .ToArray();
+        var result = await FilterWithLocalChanges(
+            e => new RecurrentEventStateId(e.RecurrentEventId!.Value, Constants.J1_1990.AddMinutes(e.Effective.Start)),
+            e => FilterRule.And(
+                FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
+                FilterRule.Eq("recurrentEventId", e.RecurrentEventId)),
+            ids);
 
-        if (local.Length == ids.Count())
-            return local.Select(x => x.ToRecurrentEventState()).ToArray();
-
-        var surplus = ids.Except(local.Select(x =>
-                new RecurrentEventStateId(x.RecurrentEventId!.Value, Constants.J1_1990.AddMinutes(x.Effective.Start))))
-            .ToArray();
-
-        var surplusRows = await GetDbManyStatesAsync(surplus);
-
-        return local.Concat(surplusRows).Select(x => x.ToRecurrentEventState()).ToArray();
-    }
-
-    private async Task<EventRow<TData>[]> GetDbManyStatesAsync(RecurrentEventStateId[] ids)
-    {
-        if (!ids.Any())
-            return Array.Empty<EventRow<TData>>();
-
-        var queryable = _dbContext.Events.Where(x => x.Type == EventType.RecurrentEventState);
-
-        if (ids.Length == 1)
-        {
-            var first = ids.First();
-            return await queryable
-                .Where(x => first.RecurrentEventId == x.RecurrentEventId &&
-                            first.EventStart.TotalMinutesSince1990() == x.Effective.Start)
-                .ToArrayAsync();
-        }
-
-        var result = new List<EventRow<TData>>(ids.Length);
-
-        foreach (var chunk in ids.Chunk(500))
-        {
-            var filters = FilterRule.Or(
-                chunk.Select(e => FilterRule.And(
-                    FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
-                    FilterRule.Eq("recurrentEventId", e.RecurrentEventId))));
-
-            result.AddRange(await queryable.Where(_recurrentEventRowAskyFieldMap, filters).ToArrayAsync());
-        }
-
-        return result.ToArray();
+        return result.Select(x => x.ToRecurrentEventState()).ToArray();
     }
 
     public async Task<Event<TData>[]> GetCalculatedAsync(
@@ -462,6 +401,9 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
         result = result.Where(x => !x.Cancelled).ToArray();
 
+        // We have to filter again, because result might contain unfiltered data.
+        // Example: we want to get events, where Data == "4"
+        // in result we have RecurrentEvent with Data == "4" and RecurrentEventState with Data == "1"
         if (dataFilter != null)
             result = result.Where(Expressions.Child<Event<TData>, TData>(x => x.Data, dataFilter).Compile()).ToArray();
 
@@ -492,10 +434,62 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         var filters = new DbQuery<TData>(from, to, dataFilter, _settings.TimeZone,
             filterOptimization ?? _settings.DbQueryOptimization);
 
-        var local = filters.ToArray(_dbContext.Events.Local);
+        var local = filters.ToArray(await GetLocalRows());
         var db = await filters.ToArrayAsync(_dbContext.Events.AsQueryable());
 
-        return local.Concat(db.Except(local)).ToArray();
+        return FilterOutLocallyDeletedRows(local.Concat(db.Except(local))).ToArray();
+
+        // We can't use _dbContext.Events.Local directly, because we have filtering by eventRow.RecurrentEvent Navigation in DbQuery
+        // In this prop we store RecurrentEvent of RecurrentEventState. When we do filtering in db ef convert predicate to sql with join,
+        // but then if AutoInclude is false we get states with RecurrentEvent == null. To filter properly in memory we have to manually
+        // fill this data
+        async Task<IEnumerable<EventRow<TData>>> GetLocalRows()
+        {
+            var localRows = _dbContext.Events.Local.ToList();
+            if (!localRows.Any())
+                return localRows;
+
+            var localStatesWithoutRecurrentEvent = localRows
+                .Where(e => e.IsRecurrentEventState())
+                .Where(e => e.RecurrentEvent == null)
+                .ToArray();
+
+            if (!localStatesWithoutRecurrentEvent.Any())
+                return localRows;
+
+            var recurrentEventIds = localStatesWithoutRecurrentEvent.Select(e => e.RecurrentEventId!.Value).ToArray();
+
+            var recurrentEvents = _dbContext.Events.Local
+                .Where(e => e.Type == EventType.RecurrentEvent)
+                .Where(e => recurrentEventIds.Contains(e.Id))
+                .ToDictionary(e => e.Id);
+
+            var notFoundRecurrentEventsIds = recurrentEventIds.Except(recurrentEvents.Keys).ToArray();
+            // we didn't find all recurrent events in local, so we have to query data from db
+            if (notFoundRecurrentEventsIds.Any())
+            {
+                var dbRecurrentEvents = await _dbContext.Events
+                    .Where(e => notFoundRecurrentEventsIds.Contains(e.Id))
+                    .ToDictionaryAsync(e => e.Id);
+                recurrentEvents = recurrentEvents.Concat(dbRecurrentEvents).ToDictionary(e => e.Key, e => e.Value);
+            }
+
+            foreach (var eventRow in localStatesWithoutRecurrentEvent)
+            {
+                if (recurrentEvents.TryGetValue(eventRow.RecurrentEventId!.Value, out var recurrentEvent))
+                {
+                    eventRow.RecurrentEvent = recurrentEvent;
+                }
+                else
+                {
+                    // For some reasons we didn't find recurrent event in db and in local.
+                    // We assume this is because recurrentEvent was deleted, so we skip this row
+                    localRows.Remove(eventRow);
+                }
+            }
+
+            return localRows;
+        }
     }
 
     private async Task<EventRow<TData>?> FindAsync(Guid id, EventType? type = null)
@@ -517,13 +511,14 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     private async Task<EventRow<TData>?> FindRecurrentEventStateAsync(Guid recurrentEventId, DateTimeOffset dateTime)
     {
-        var local = _dbContext.Events.Local.FirstOrDefault(x =>
-            x.RecurrentEventId == recurrentEventId && x.Type == EventType.RecurrentEventState &&
-            x.Effective.Start == dateTime.TotalMinutesSince1990());
+        var result = await FilterWithLocalChanges(
+            e => new RecurrentEventStateId(e.RecurrentEventId!.Value, Constants.J1_1990.AddMinutes(e.Effective.Start)),
+            e => FilterRule.And(
+                FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
+                FilterRule.Eq("recurrentEventId", e.RecurrentEventId)),
+            [new RecurrentEventStateId(recurrentEventId, dateTime)]);
 
-        return local ?? await _dbContext.Events.FirstOrDefaultAsync(x =>
-            x.RecurrentEventId == recurrentEventId && x.Type == EventType.RecurrentEventState &&
-            x.Effective.Start == dateTime.TotalMinutesSince1990());
+        return result.FirstOrDefault();
     }
 
     private async Task<EventRow<TData>> FindRequiredRecurrentEventStateAsync(Guid id, DateTimeOffset dateTime)
@@ -533,16 +528,59 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     private async Task<EventRow<TData>[]> GetManyAsync(IEnumerable<Guid> ids)
     {
+        var result = await FilterWithLocalChanges(e => e.Id, e => FilterRule.Eq("id", e), ids);
+        return result.ToArray();
+    }
+
+    private async Task<IEnumerable<EventRow<TData>>> FilterWithLocalChanges(
+        Func<IQueryable<EventRow<TData>>, IQueryable<EventRow<TData>>> filter)
+    {
+        var localStates = filter(_dbContext.Events.Local.AsQueryable()).ToArray();
+        var dbStates = await filter(_dbContext.Events).ToArrayAsync();
+
+        // We need to filter again, because of local changes
+        return filter(FilterOutLocallyDeletedRows(localStates.Concat(dbStates.Except(localStates))).AsQueryable());
+    }
+
+    private async Task<IEnumerable<EventRow<TData>>> FilterWithLocalChanges<TId>(
+        Func<EventRow<TData>, TId> idAccessor,
+        Func<TId, FilterRule> idToFilterRuleConverter,
+        IEnumerable<TId> ids) where TId : notnull
+    {
         ids = ids.Distinct().ToArray();
-        var local = _dbContext.Events.Local.Where(x => ids.Contains(x.Id)).ToArray();
 
-        if (local.Length == ids.Count())
-            return local;
+        if (!ids.Any())
+            return [];
 
-        var surplus = ids.Except(local.Select(x => x.Id)).ToArray();
-        var surplusRows = await _dbContext.Events.Where(x => surplus.Contains(x.Id)).ToArrayAsync();
+        var idsFilters = ids.ToDictionary(e => e, idToFilterRuleConverter);
 
-        return local.Concat(surplusRows).ToArray();
+        var localStates = _dbContext.Events.Local.AsQueryable()
+            .Where(_recurrentEventRowAskyFieldMap,
+                idsFilters.Values.Count == 1 ? idsFilters.Values.First() : FilterRule.Or(idsFilters.Values))
+            .ToArray();
+        var surplusIds = idsFilters.Keys.Except(localStates.Select(idAccessor)).ToArray();
+        var dbStates = await FetchFromDb(surplusIds.Select(e => idsFilters[e]));
+
+        return FilterOutLocallyDeletedRows(localStates.Concat(dbStates.Except(localStates)));
+
+        async Task<EventRow<TData>[]> FetchFromDb(IEnumerable<FilterRule> surplusIdsPredicates)
+        {
+            var result = new List<EventRow<TData>>();
+
+            foreach (var chunk in surplusIdsPredicates.Chunk(500))
+            {
+                result.AddRange(await _dbContext.Events
+                    .Where(_recurrentEventRowAskyFieldMap, chunk.Length == 1 ? chunk[0] : FilterRule.Or(chunk))
+                    .ToArrayAsync());
+            }
+
+            return result.ToArray();
+        }
+    }
+
+    private IEnumerable<EventRow<TData>> FilterOutLocallyDeletedRows(IEnumerable<EventRow<TData>> rows)
+    {
+        return rows.Where(row => _dbContext.Events.Entry(row).State != EntityState.Deleted);
     }
 
     private void AssertEventMightExist(RecurrentEvent<TData> @event, DateTimeOffset eventStart)
