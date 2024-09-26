@@ -343,7 +343,8 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     async Task<RecurrentEventState<TData>[]> IRecurrentEventCalendarInstance<TData>.GetAllStatesAsync(FilterRule filter)
     {
-        filter = filter.Replace(new DateTimeOffsetToMinutesSince1990FilterRuleVisitor(["period.start", "period.end"]));
+        filter = filter.Replace(
+            new DateTimeOffsetToMinutesSince1990FilterRuleVisitor(new[] { "period.start", "period.end" }));
 
         var result = await FilterWithLocalChanges(q => q
             .Where(_recurrentEventStateAskyFieldMap, filter)
@@ -516,7 +517,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
             e => FilterRule.And(
                 FilterRule.Eq("effective.start", e.EventStart.TotalMinutesSince1990()),
                 FilterRule.Eq("recurrentEventId", e.RecurrentEventId)),
-            [new RecurrentEventStateId(recurrentEventId, dateTime)]);
+            new[] { new RecurrentEventStateId(recurrentEventId, dateTime) });
 
         return result.FirstOrDefault();
     }
@@ -550,7 +551,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         ids = ids.Distinct().ToArray();
 
         if (!ids.Any())
-            return [];
+            return Enumerable.Empty<EventRow<TData>>();
 
         var idsFilters = ids.ToDictionary(e => e, idToFilterRuleConverter);
 
