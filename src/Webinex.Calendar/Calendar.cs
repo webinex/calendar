@@ -262,7 +262,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
         var states = await FilterWithLocalChanges(q => q
             .Where(x => x.Type == EventType.RecurrentEventState && x.RecurrentEventId == id)
-            .Where(x => x.Effective.Start >= since.TotalMinutesSince1990() || x.MoveTo!.Start >= since));
+            .Where(x => x.Effective.Start >= since.TotalMinutesSince1990() || (x.MoveTo != null && x.MoveTo.Start >= since)));
         states = states.ToArray();
 
         var remove = states.Where(x =>
