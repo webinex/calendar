@@ -106,10 +106,10 @@ public record EventFiltersProvider<TData>(
 
         return x => x.Repeat!.Type == EventRowRepeatType.Interval && (
                         x.Effective.Start >= From.TotalMinutesSince1990()
-                        || (rangeMinutes >= x.Repeat!.Interval! &&
+                        || (rangeMinutes >= x.Repeat.Interval &&
                             (!x.Effective.End.HasValue ||
                              x.Effective.End.Value >= To.TotalMinutesSince1990() ||
-                             x.Effective.End.Value - From.TotalMinutesSince1990() >= x.Repeat.Interval!))
+                             x.Effective.End.Value - From.TotalMinutesSince1990() >= x.Repeat.Interval))
                         || (From.TotalMinutesSince1990() - x.Effective.Start) %
                         x.Repeat.Interval < x.Repeat.DurationMinutes)
 
