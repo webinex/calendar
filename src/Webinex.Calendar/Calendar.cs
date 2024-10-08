@@ -54,10 +54,10 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     async Task<OneTimeEvent<TData>> IOneTimeEventCalendarInstance<TData>.AddAsync(OneTimeEvent<TData> @event)
     {
         @event = @event ?? throw new ArgumentNullException(nameof(@event));
-        var row = EventRow<TData>.NewEvent(@event.Period, @event.Data);
+        var row = EventRow<TData>.NewEvent(@event.Id, @event.Period, @event.Data);
         await _dbContext.Events.AddAsync(row);
         _cache.PushAdd(row);
-        return @event;
+        return row.ToOneTimeEvent();
     }
 
     async Task<OneTimeEvent<TData>> IOneTimeEventCalendarInstance<TData>.UpdateDataAsync(
