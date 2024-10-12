@@ -56,7 +56,11 @@ public class TestDbContext : DbContext, ICalendarDbContext<EventData>
                 repeat.Property(x => x.DayOfMonth).HasColumnName("Repeat_DayOfMonth");
             });
 
-            row.OwnsOne(x => x.Data, o => { o.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250); });
+            row.OwnsOne(x => x.Data, o =>
+            {
+                o.OwnsOne(e => e.NValue, n => n.Property(e => e.Value).HasColumnName("Data_NValue").HasMaxLength(250));
+                o.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250);
+            });
         });
     }
 }

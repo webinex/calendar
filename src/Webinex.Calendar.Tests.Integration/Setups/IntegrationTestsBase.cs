@@ -1,7 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Webinex.Asky;
-using Webinex.Calendar.DataAccess;
 
 namespace Webinex.Calendar.Tests.Integration.Setups;
 
@@ -121,6 +119,7 @@ create table {SCHEMA_NAME}.{EVENTS_TABLE_NAME}
     Repeat_Sunday                         bit              null,
     Repeat_DayOfMonth                     int              null,
     Data_Name                             nvarchar(200)    not null,
+    Data_NValue                           nvarchar(250)    null,
 )
 ";
 
