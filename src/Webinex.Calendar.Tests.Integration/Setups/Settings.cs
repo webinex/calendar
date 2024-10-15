@@ -28,5 +28,9 @@ public static class Settings
         "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True;";
 
     public static string SQL_DB_CONNECTION_STRING => $"{SQL_SERVER_CONNECTION_STRING}Database={DB_NAME};";
+    
+    /// <summary>
+    /// Returns 1 of January 2023 in UTC, Sunday
+    /// </summary>
     public static readonly DateTimeOffset JAN1_2023_UTC = new(2023, 1, 1, 0, 0, 0, TimeSpan.Zero);
 }

@@ -13,6 +13,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     IRecurrentEventCalendarInstance<TData>
     where TData : class, ICloneable
 {
+    private readonly EfLocalCache<TData> _localCache;
     private readonly ICalendarDbContext<TData> _dbContext;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly IRecurrentEventRowAskyFieldMap<TData> _recurrentEventRowAskyFieldMap;
@@ -34,6 +35,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         _recurrentEventStateAskyFieldMap = recurrentEventStateAskyFieldMap;
         _cache = cache;
         _settings = settings;
+        _localCache = new EfLocalCache<TData>(dbContext.Events.Local);
     }
 
     public IOneTimeEventCalendarInstance<TData> OneTime => this;
@@ -446,7 +448,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         // fill this data
         async Task<IEnumerable<EventRow<TData>>> GetLocalRows()
         {
-            var localRows = _dbContext.Events.Local.ToList();
+            var localRows = _localCache.AsEnumerable().ToList();
             if (!localRows.Any())
                 return localRows;
 
@@ -460,7 +462,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
             var recurrentEventIds = localStatesWithoutRecurrentEvent.Select(e => e.RecurrentEventId!.Value).ToArray();
 
-            var recurrentEvents = _dbContext.Events.Local
+            var recurrentEvents = _localCache.AsEnumerable()
                 .Where(e => e.Type == EventType.RecurrentEvent)
                 .Where(e => recurrentEventIds.Contains(e.Id))
                 .ToDictionary(e => e.Id);
@@ -536,7 +538,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
     private async Task<IEnumerable<EventRow<TData>>> FilterWithLocalChanges(
         Func<IQueryable<EventRow<TData>>, IQueryable<EventRow<TData>>> filter)
     {
-        var localStates = filter(_dbContext.Events.Local.AsQueryable()).ToArray();
+        var localStates = filter(_localCache.AsQueryable()).ToArray();
         var dbStates = await filter(_dbContext.Events).ToArrayAsync();
 
         // We need to filter again, because of local changes
@@ -555,7 +557,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
         var idsFilters = ids.ToDictionary(e => e, idToFilterRuleConverter);
 
-        var localStates = _dbContext.Events.Local.AsQueryable()
+        var localStates = _localCache.AsQueryable()
             .Where(_recurrentEventRowAskyFieldMap,
                 idsFilters.Values.Count == 1 ? idsFilters.Values.First() : FilterRule.Or(idsFilters.Values))
             .ToArray();
@@ -581,7 +583,7 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
 
     private IEnumerable<EventRow<TData>> FilterOutLocallyDeletedRows(IEnumerable<EventRow<TData>> rows)
     {
-        return rows.Where(row => _dbContext.Events.Entry(row).State != EntityState.Deleted);
+        return rows.Where(row => !_localCache.IsRemoved(row));
     }
 
     private void AssertEventMightExist(RecurrentEvent<TData> @event, DateTimeOffset eventStart)
