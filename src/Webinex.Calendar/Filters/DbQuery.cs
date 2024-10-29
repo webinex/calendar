@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Webinex.Calendar.Common;
 using Webinex.Calendar.DataAccess;
+using Webinex.Calendar.Events;
 
 namespace Webinex.Calendar.Filters;
 
@@ -61,11 +62,35 @@ internal class DbQuery<TData> where TData : class, ICloneable
             Precise: _filteringOptionsFlags.HasFlag(DbFilterOptimization.Precise));
 
         var dbResult = await queryable.Where(provider.Create()).ToArrayAsync();
+        await PopulateStatesWithRecurrentEvent(queryable, dbResult);
 
         // after not precise db filtering we should do precise filtering on the client
         provider.Precise = true;
         provider.Data = true;
 
         return dbResult.Where(provider.Create().Compile()).ToArray();
+    }
+
+    /// <summary>
+    /// In rare cases EventRows of type RecurrentEventState might not have assigned RecurrentEvent, but have RecurrentEventId.
+    /// In these cases we manually find RecurrentEvents and assign them
+    /// </summary>
+    private async Task PopulateStatesWithRecurrentEvent(
+        IQueryable<EventRow<TData>> queryable,
+        EventRow<TData>[] rows)
+    {
+        var requiredRecurrentEvents = rows
+            .Where(e => e.Type == EventType.RecurrentEventState)
+            .Where(e => e.RecurrentEvent == null)
+            .Select(e => e.RecurrentEventId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToArray();
+
+        if (requiredRecurrentEvents.Length == 0)
+            return;
+
+        // Change tracker will manually assign these RecurrentEvents
+        await queryable.Where(e => requiredRecurrentEvents.Contains(e.Id)).ToArrayAsync();
     }
 }
