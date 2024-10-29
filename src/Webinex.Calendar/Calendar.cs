@@ -384,31 +384,30 @@ internal class Calendar<TData> : ICalendar<TData>, IOneTimeEventCalendarInstance
         // +/- 1 hour needed to ensure DST transition events loaded, it would be additionally filtered at the end of method
         var rows = await GetRowsFromCacheOrFallbackToDbContextAsync(from.AddHours(-1), to.AddHours(1), dataFilterRule,
             queryOptions);
-        var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent).ToArray();
+        var oneTimeEvents = rows.Where(x => x.Type == EventType.OneTimeEvent);
 
         var recurrentEventStates = rows
             .Where(x => x.Type == EventType.RecurrentEventState)
-            .Select(x => x.ToRecurrentEventState()).ToArray();
+            .Select(x => x.ToRecurrentEventState())
+            .ToArray();
 
         var recurrentEventStateById = recurrentEventStates.ToLookup(x => x.RecurrentEventId);
 
         var recurrentEvents = rows.Where(x => x.Type == EventType.RecurrentEvent).ToArray();
         var statesWithoutRecurrentEvent = recurrentEventStates
-            .Where(s => recurrentEvents.All(r => r.Id != s.RecurrentEventId)).ToArray();
+            .Where(s => recurrentEvents.All(r => r.Id != s.RecurrentEventId));
 
         var result = recurrentEvents
             .SelectMany(ev => ev.ToRecurrentEvent().ToEvents(from, to, recurrentEventStateById[ev.Id]))
             .Concat(oneTimeEvents.Select(ev => ev.ToOneTimeEvent().ToEvent()))
             .Concat(statesWithoutRecurrentEvent.Select(x => x.ToEvent()))
-            .ToArray();
-
-        result = result.Where(x => !x.Cancelled).ToArray();
+            .Where(x => !x.Cancelled);
 
         // We have to filter again, because result might contain unfiltered data.
         // Example: we want to get events, where Data == "4"
         // in result we have RecurrentEvent with Data == "4" and RecurrentEventState with Data == "1"
         if (dataFilter != null)
-            result = result.Where(Expressions.Child<Event<TData>, TData>(x => x.Data, dataFilter).Compile()).ToArray();
+            result = result.Where(Expressions.Child<Event<TData>, TData>(x => x.Data, dataFilter).Compile());
 
         return result.Where(x => period.Intersects(new Period(x.Start, x.End))).ToArray();
     }
