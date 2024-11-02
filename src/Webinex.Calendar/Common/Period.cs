@@ -30,20 +30,24 @@ public class Period : Equatable
 
     public Weekday[] FullDayWeekdays()
     {
-        var value = Start.TimeOfDay > TimeSpan.Zero
+        var start = Start.TimeOfDay > TimeSpan.Zero
             ? Start.AddDays(1).StartOfTheDay()
             : Start;
 
         var end = End.StartOfTheDay();
 
-        var weekdays = new LinkedList<Weekday>();
-        while (value < end && weekdays.Count < 7)
-        {
-            weekdays.AddLast(Weekday.From(value.DayOfWeek));
-            value = value.AddDays(1);
-        }
+        if (start >= end) return Array.Empty<Weekday>();
 
-        return weekdays.Distinct().ToArray();
+        var diffInDays = (int)(end - start).TotalDays;
+        var startWeekday = Weekday.From(start.DayOfWeek);
+
+        return diffInDays switch
+        {
+            0 => Array.Empty<Weekday>(),
+            > 0 and < 7 => Enumerable.Range(0, diffInDays).Select(i => startWeekday.Add(i)).ToArray(),
+            >= 7 => Weekday.All,
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 
     public static bool operator ==(Period? left, Period? right)
@@ -55,6 +59,8 @@ public class Period : Equatable
     {
         return NotEqualOperator(left, right);
     }
+
+    public override string ToString() => $"{Start:s} - {End:s}";
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

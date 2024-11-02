@@ -8,37 +8,40 @@ public class MatchDayOfMonthEventFilterFactory<TData>
     where TData : class, ICloneable
 {
     private const int MAX_DAYS_IN_MONTH = 31;
+    
+    private static readonly Expression<Func<EventRow<TData>, bool>> TypeMatchExpression =
+        x => x.Repeat!.Type == EventRowRepeatType.DayOfMonth;
 
     private readonly DateTimeOffset _from;
     private readonly DateTimeOffset _to;
+    private readonly Lazy<int[]> _wholeDays;
 
     public MatchDayOfMonthEventFilterFactory(DateTimeOffset from, DateTimeOffset to)
     {
         _from = from;
         _to = to;
+        _wholeDays = new Lazy<int[]>(() => DateTimeOffsetUtil.GetUniqueUtcWholeDayOfMonthInRange(_from, _to));
     }
 
     private int ToDay => _to.Day;
     private int FromDay => _from.Day;
     private int DayBeforeFrom => _from.AddDays(-1).Day;
-    private int[] WholeDays => DateTimeOffsetUtil.GetUniqueUtcWholeDayOfMonthInRange(_from, _to);
+    private int[] WholeDays => _wholeDays.Value;
 
     public Expression<Func<EventRow<TData>, bool>> Create()
     {
-        Expression<Func<EventRow<TData>, bool>> @base = x => x.Repeat!.Type == EventRowRepeatType.DayOfMonth;
-
         if (WholeDays.Length >= MAX_DAYS_IN_MONTH)
-            return @base;
+            return TypeMatchExpression;
 
         return Expressions.And(
-            @base,
-            new[]
+            TypeMatchExpression,
+            Expressions.Or(new[]
             {
                 CreateDayBeforeOvernightExpression(),
                 CreateFromDayExpression(),
                 CreateWholeDayExpression(),
                 CreateToDayExpression(),
-            }.NotNull().Aggregate(Expressions.Or));
+            }.NotNull()));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateDayBeforeOvernightExpression()
