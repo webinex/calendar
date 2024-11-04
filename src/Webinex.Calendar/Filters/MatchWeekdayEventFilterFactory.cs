@@ -10,33 +10,40 @@ namespace Webinex.Calendar.Filters;
 internal class MatchWeekdayEventFilterFactory<TData>
     where TData : class, ICloneable
 {
+    private static readonly Expression<Func<EventRow<TData>, bool>> TypeMatchExpression =
+        x => x.Repeat!.Type == EventRowRepeatType.Weekday;
+
     private readonly DateTimeOffset _from;
     private readonly DateTimeOffset _to;
+    private readonly Lazy<Weekday[]> _fullDayWeekdays;
 
     public MatchWeekdayEventFilterFactory(DateTimeOffset from, DateTimeOffset to, string timeZone)
     {
         var tz = DateTimeZoneProviders.Tzdb[timeZone];
         _from = from.ToInstant().InZone(tz).ToDateTimeUnspecified();
         _to = to.ToInstant().InZone(tz).ToDateTimeUnspecified();
+        _fullDayWeekdays = new Lazy<Weekday[]>(() => new Period(_from, _to).FullDayWeekdays());
     }
 
     private Weekday ToWeekday => Weekday.From(_to.DayOfWeek);
     private Weekday FromWeekday => Weekday.From(_from.DayOfWeek);
     private Weekday DayBeforeFromWeekday => Weekday.From(_from.AddDays(-1).DayOfWeek);
-    private Weekday[] FullDayWeekdays => new Period(_from, _to).FullDayWeekdays();
+    private Weekday[] FullDayWeekdays => _fullDayWeekdays.Value;
 
     public Expression<Func<EventRow<TData>, bool>> Create()
     {
-        Expression<Func<EventRow<TData>, bool>> typeMatchExpression =
-            x => x.Repeat!.Type == EventRowRepeatType.Weekday;
+        // If in search period we have all weekdays we only need add filter by Repeat.Type,
+        // because any weekday repetition is implicitly included.
+        if (FullDayWeekdays.Length == Weekday.DAYS_IN_WEEK)
+            return TypeMatchExpression;
 
-        return Expressions.And(typeMatchExpression, new[]
+        return Expressions.And(TypeMatchExpression, Expressions.Or(new[]
         {
             CreateWholeDayExpression(),
             CreateDayBeforeOvernightExpression(),
             CreateFromDayExpression(),
             CreateToDayExpression(),
-        }.NotNull().Aggregate(Expressions.Or));
+        }.NotNull()));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateDayBeforeOvernightExpression()
@@ -47,14 +54,15 @@ internal class MatchWeekdayEventFilterFactory<TData>
         Expression<Func<EventRow<TData>, bool>> weekdayExpression = x => _from.TotalMinutesFromStartOfTheDay() <
                                                                          x.Repeat!.OvernightDurationMinutes;
 
-        return Expressions.And(weekdayExpression, EventRow<TData>.Selector(DayBeforeFromWeekday));
+        return Expressions.And(weekdayExpression, EventRow<TData>.WeekdaySelector(DayBeforeFromWeekday));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateWholeDayExpression()
     {
-        return !FullDayWeekdays.Any()
-            ? null
-            : FullDayWeekdays.Select(EventRow<TData>.Selector).NotNull().Aggregate(Expressions.Or);
+        if (!FullDayWeekdays.Any())
+            return null;
+
+        return Expressions.Or(FullDayWeekdays.Select(EventRow<TData>.WeekdaySelector));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateFromDayExpression()
@@ -71,7 +79,7 @@ internal class MatchWeekdayEventFilterFactory<TData>
                 x => _to.TotalMinutesFromStartOfTheDay() > x.Repeat!.TimeOfTheDayInMinutes);
         }
 
-        return Expressions.And(expression, EventRow<TData>.Selector(FromWeekday));
+        return Expressions.And(expression, EventRow<TData>.WeekdaySelector(FromWeekday));
     }
 
     private Expression<Func<EventRow<TData>, bool>>? CreateToDayExpression()
@@ -82,6 +90,6 @@ internal class MatchWeekdayEventFilterFactory<TData>
         Expression<Func<EventRow<TData>, bool>> expression = x =>
             _to.TotalMinutesFromStartOfTheDay() > x.Repeat!.TimeOfTheDayInMinutes;
 
-        return Expressions.And(expression, EventRow<TData>.Selector(ToWeekday));
+        return Expressions.And(expression, EventRow<TData>.WeekdaySelector(ToWeekday));
     }
 }

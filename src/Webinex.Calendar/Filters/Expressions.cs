@@ -17,19 +17,7 @@ internal static class Expressions
     {
         expressions = expressions.ToArray();
 
-        if (!expressions.Any())
-            throw new ArgumentException("Might be at least 1 expression", nameof(expressions));
-
-        if (expressions.Count() == 1)
-            return expressions.ElementAt(0);
-
-        return expressions.Skip(1).Aggregate(expressions.ElementAt(0), Or);
-    }
-
-    public static Expression<Func<T, bool>> Or<T>(
-        params Expression<Func<T, bool>>[] expressions)
-    {
-        return Or(expressions.AsEnumerable());
+        return GetAggregatedExpression(Expression.OrElse, expressions.ToArray());
     }
 
     public static Expression<Func<T, bool>> Or<T>(
@@ -37,6 +25,26 @@ internal static class Expressions
         Expression<Func<T, bool>> expr2)
     {
         return GetAggregatedExpression(Expression.OrElse, expr1, expr2);
+    }
+
+    private static Expression<Func<T, bool>> GetAggregatedExpression<T>(
+        Func<Expression, Expression, BinaryExpression> aggregate,
+        Expression<Func<T, bool>>[] expressions)
+    {
+        if (expressions.Length == 0)
+            throw new ArgumentException("Might be at least 1 expression", nameof(expressions));
+
+        if (expressions.Length == 1)
+            return expressions[0];
+
+        var parameter = Expression.Parameter(typeof(T));
+
+        var result = expressions.Skip(1).Aggregate(
+            ReplaceParameter(expressions[0].Body, expressions[0].Parameters[0], parameter),
+            (current, expression) =>
+                aggregate(current, ReplaceParameter(expression.Body, expression.Parameters[0], parameter)));
+
+        return Expression.Lambda<Func<T, bool>>(result, parameter);
     }
 
     private static Expression<Func<T, bool>> GetAggregatedExpression<T>(

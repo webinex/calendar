@@ -53,7 +53,7 @@ public class EventRow<TData>
 
     [MemberNotNullWhen(true, nameof(RecurrentEventId))]
     internal bool IsRecurrentEventState() => Type == EventType.RecurrentEventState;
-    
+
     internal EventRow<TData>? RecurrentEvent { get; set; }
 
     internal EventRowId GetEventRowId() => new EventRowId(Type, Id, RecurrentEventId, Effective.ToOpenPeriod().Start);
@@ -198,32 +198,21 @@ public class EventRow<TData>
         var max = period.End.TotalMinutesSince1990();
 
         return (Effective.Start < max && (!Effective.End.HasValue || Effective.End.Value > min))
-                    || (MoveTo != null && MoveTo!.Start < period.End && MoveTo.End > period.Start);
+               || (MoveTo != null && MoveTo!.Start < period.End && MoveTo.End > period.Start);
     }
 
-    internal static Expression<Func<EventRow<TData>, bool>> Selector(Weekday weekday)
-    {
-        if (weekday == Weekday.Monday)
-            return x => x.Repeat!.Monday!.Value;
+    internal static Expression<Func<EventRow<TData>, bool>> WeekdaySelector(Weekday weekday) =>
+        WeekdaySelectorMap[weekday];
 
-        if (weekday == Weekday.Tuesday)
-            return x => x.Repeat!.Tuesday!.Value;
-
-        if (weekday == Weekday.Wednesday)
-            return x => x.Repeat!.Wednesday!.Value;
-
-        if (weekday == Weekday.Thursday)
-            return x => x.Repeat!.Thursday!.Value;
-
-        if (weekday == Weekday.Friday)
-            return x => x.Repeat!.Friday!.Value;
-
-        if (weekday == Weekday.Saturday)
-            return x => x.Repeat!.Saturday!.Value;
-
-        if (weekday == Weekday.Sunday)
-            return x => x.Repeat!.Sunday!.Value;
-
-        throw new InvalidOperationException();
-    }
+    private static IReadOnlyDictionary<Weekday, Expression<Func<EventRow<TData>, bool>>> WeekdaySelectorMap =
+        new Dictionary<Weekday, Expression<Func<EventRow<TData>, bool>>>
+        {
+            [Weekday.Monday] = x => x.Repeat!.Monday!.Value,
+            [Weekday.Tuesday] = x => x.Repeat!.Tuesday!.Value,
+            [Weekday.Wednesday] = x => x.Repeat!.Wednesday!.Value,
+            [Weekday.Thursday] = x => x.Repeat!.Thursday!.Value,
+            [Weekday.Friday] = x => x.Repeat!.Friday!.Value,
+            [Weekday.Saturday] = x => x.Repeat!.Saturday!.Value,
+            [Weekday.Sunday] = x => x.Repeat!.Sunday!.Value
+        };
 }
