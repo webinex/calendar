@@ -40,36 +40,28 @@ public record EventFiltersProvider<TData>(
             throw new ArgumentException(
                 "All event Types are disabled. You must enable at least one of them (OneTime/DayOfMonth/DayOfWeek/Interval)");
 
-        Expression<Func<EventRow<TData>, bool>> @base = x =>
+        Expression<Func<EventRow<TData>, bool>> filter = x =>
             x.Effective.Start < To.TotalMinutesSince1990() &&
             (x.Effective.End > From.TotalMinutesSince1990() || x.Effective.End == null);
 
         if (TryCreateDataFilter(out var dataFilter))
-            @base = Expressions.And(@base, dataFilter);
+            filter = Expressions.And(filter, dataFilter);
 
-        return TryCreateRecurrentEventStateFilter(out var recurrentEventStateFilter)
-            ? Expressions.Or(BaseAndOneTimeOrRecurrentEvent(), recurrentEventStateFilter)
-            : BaseAndOneTimeOrRecurrentEvent();
+        var oneTimeFilter = CreateOneTimeEventFilter();
+        var recurrentEventFilter = CreateRecurrentEventFilter();
 
-        Expression<Func<EventRow<TData>, bool>> BaseAndOneTimeOrRecurrentEvent()
+        if (oneTimeFilter != null || recurrentEventFilter != null)
         {
-            var oneTimeOrRecurrentEvent = OneTimeOrRecurrentEvent();
-            return oneTimeOrRecurrentEvent == null ? @base : Expressions.And(@base, oneTimeOrRecurrentEvent);
+            var f = oneTimeFilter != null && recurrentEventFilter != null
+                ? Expressions.Or(oneTimeFilter, recurrentEventFilter)
+                : oneTimeFilter ?? recurrentEventFilter ?? throw new InvalidOperationException();
+            filter = Expressions.And(filter, f);
         }
 
-        Expression<Func<EventRow<TData>, bool>>? OneTimeOrRecurrentEvent()
-        {
-            var hasOneTimeFilter = TryCreateOneTimeEventFilter(out var oneTimeFilter);
-            var hasRecurrentEventFilter = TryCreateRecurrentEventFilter(out var recurrentEventFilter);
+        if (TryCreateRecurrentEventStateFilter(out var recurrentEventStateFilter))
+            filter = Expressions.Or(filter, recurrentEventStateFilter);
 
-            if (!hasOneTimeFilter && !hasRecurrentEventFilter)
-                return null;
-
-            if (oneTimeFilter != null && recurrentEventFilter != null)
-                return Expressions.Or(oneTimeFilter, recurrentEventFilter);
-
-            return oneTimeFilter ?? recurrentEventFilter;
-        }
+        return filter;
     }
 
     [MemberNotNullWhen(true, nameof(DataFilter))]
@@ -83,14 +75,12 @@ public record EventFiltersProvider<TData>(
         return true;
     }
 
-    private bool TryCreateOneTimeEventFilter([NotNullWhen(true)] out Expression<Func<EventRow<TData>, bool>>? filter)
+    private Expression<Func<EventRow<TData>, bool>>? CreateOneTimeEventFilter()
     {
-        filter = null;
         if (!OneTime)
-            return false;
+            return null;
 
-        filter = OneTimeEventFilterPredicate;
-        return true;
+        return OneTimeEventFilterPredicate;
     }
 
     private bool TryCreateRecurrentEventStateFilter(
@@ -124,22 +114,19 @@ public record EventFiltersProvider<TData>(
         return true;
     }
 
-    private bool TryCreateRecurrentEventFilter([NotNullWhen(true)] out Expression<Func<EventRow<TData>, bool>>? filter)
+    private Expression<Func<EventRow<TData>, bool>>? CreateRecurrentEventFilter()
     {
-        filter = null;
         if (!Precise && (DayOfWeek || DayOfMonth || Interval))
         {
-            filter = BaseRecurrentEventStateFilter;
-            return true;
+            return BaseRecurrentEventStateFilter;
         }
 
         var predicates = GetPredicates().ToArray();
 
         if (!predicates.Any())
-            return false;
+            return null;
 
-        filter = Expressions.And(BaseRecurrentEventStateFilter, Expressions.Or(predicates));
-        return true;
+        return Expressions.And(BaseRecurrentEventStateFilter, Expressions.Or(predicates));
 
         IEnumerable<Expression<Func<EventRow<TData>, bool>>> GetPredicates()
         {
