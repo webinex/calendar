@@ -30,6 +30,11 @@ internal class DbQuery<TData> where TData : class, ICloneable
 
     public EventRow<TData>[] ToArray(IEnumerable<EventRow<TData>> enumerable)
     {
+        enumerable = enumerable.ToArray();
+
+        if (!enumerable.Any())
+            return Array.Empty<EventRow<TData>>();
+
         var provider = new EventFiltersProvider<TData>(
             From: _from,
             To: _to,
@@ -63,6 +68,13 @@ internal class DbQuery<TData> where TData : class, ICloneable
 
         var dbResult = await queryable.Where(provider.Create()).ToArrayAsync();
         await PopulateStatesWithRecurrentEvent(queryable, dbResult);
+
+        if (dbResult.Length == 0)
+            return Array.Empty<EventRow<TData>>();
+
+        // If data is already properly filtered we can simply return this data
+        if (provider is { Precise: true, Data: true })
+            return dbResult;
 
         // after not precise db filtering we should do precise filtering on the client
         provider.Precise = true;
