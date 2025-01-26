@@ -36,8 +36,8 @@ internal class RecurrentEventStateAskyFieldMap<TData> : IRecurrentEventStateAsky
                 "recurrentEventId" => x => x.RecurrentEventId!,
                 "period.start" => x => x.Effective.Start,
                 "period.end" => x => x.Effective.End!,
-                "moveTo.start" => x => x.MoveTo!.Start,
-                "moveTo.end" => x => x.MoveTo!.End!,
+                "moveTo.start" => x => (x.MoveTo != null ? x.MoveTo.Start : default(DateTimeOffset?))!,
+                "moveTo.end" => x => (x.MoveTo != null ? x.MoveTo.End : default(DateTimeOffset?))!,
                 _ => null,
             };
         }

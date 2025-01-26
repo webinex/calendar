@@ -28,7 +28,7 @@ internal class RecurrentEventRowAskyFieldMap<TData> : IRecurrentEventRowAskyFiel
             if (fieldId.StartsWith(DATA_PREFIX))
             {
                 return AskyFieldMap.Forward<EventRow<TData>, TData>(x => x.Data, _dataFieldMap,
-                    fieldId.Substring(DATA_PREFIX.Length));
+                    fieldId.Substring(DATA_PREFIX.Length))!;
             }
 
             return fieldId switch
@@ -37,13 +37,13 @@ internal class RecurrentEventRowAskyFieldMap<TData> : IRecurrentEventRowAskyFiel
                 "recurrentEventId" => x => x.RecurrentEventId!,
                 "effective.start" => x => x.Effective.Start,
                 "effective.end" => x => x.Effective.End!,
-                "repeat.weekday.monday" => x => x.Repeat!.Monday!,
-                "repeat.weekday.tuesday" => x => x.Repeat!.Tuesday!,
-                "repeat.weekday.wednesday" => x => x.Repeat!.Wednesday!,
-                "repeat.weekday.thursday" => x => x.Repeat!.Thursday!,
-                "repeat.weekday.friday" => x => x.Repeat!.Friday!,
-                "repeat.weekday.saturday" => x => x.Repeat!.Saturday!,
-                "repeat.weekday.sunday" => x => x.Repeat!.Sunday!,
+                "repeat.weekday.monday" => x => (x.Repeat != null ? x.Repeat.Monday : default(bool?))!,
+                "repeat.weekday.tuesday" => x => (x.Repeat != null ? x.Repeat.Tuesday : default(bool?))!,
+                "repeat.weekday.wednesday" => x => (x.Repeat != null ? x.Repeat.Wednesday : default(bool?))!,
+                "repeat.weekday.thursday" => x => (x.Repeat != null ? x.Repeat.Thursday : default(bool?))!,
+                "repeat.weekday.friday" => x => (x.Repeat != null ? x.Repeat.Friday : default(bool?))!,
+                "repeat.weekday.saturday" => x => (x.Repeat != null ? x.Repeat.Saturday : default(bool?))!,
+                "repeat.weekday.sunday" => x => (x.Repeat != null ? x.Repeat.Sunday : default(bool?))!,
                 _ => null,
             };
         }
