@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="$(MSBuildThisFileDirectory)/../Webinex.Calendar.All/Package.props" />
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Webinex.Calendar.Availabilities</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Webinex.Calendar.Availabilities.Abstractions\Webinex.Calendar.Availabilities.Abstractions.csproj" />
+      <ProjectReference Include="..\Webinex.Calendar\Webinex.Calendar.csproj" />
+    </ItemGroup>
+
+</Project>

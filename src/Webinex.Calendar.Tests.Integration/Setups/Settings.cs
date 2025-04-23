@@ -17,6 +17,9 @@ public static class Settings
     public static string EVENTS_TABLE_NAME =>
         Environment.GetEnvironmentVariable("WEBINEX_CALENDAR_INTEGRATION_TESTS__EVENTS_TABLE_NAME") ?? "Events";
 
+    public static string RECURRENT_EVENTS_TABLE_NAME =>
+        Environment.GetEnvironmentVariable("WEBINEX_CALENDAR_INTEGRATION_TESTS__RECURRENT_EVENTS_TABLE_NAME") ?? "RecurrentEvents";
+
     public static string SCHEMA_NAME =>
         Environment.GetEnvironmentVariable("WEBINEX_CALENDAR_INTEGRATION_TESTS__SCHEMA_NAME") ?? "tests";
 

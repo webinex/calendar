@@ -1,8 +1,6 @@
 ﻿using FluentAssertions;
 using Webinex.Asky;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
-using Webinex.Calendar.Tests.Integration.Common;
+using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -12,145 +10,144 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
     [Test]
     public async Task WhenMoveAndBothMatch_ShouldBeMoved()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            TimeSpan.FromHours(12).TotalMinutes.Round(),
-            TimeSpan.FromHours(1).TotalMinutes.Round(),
-            new EventData("NAME"));
+        var @event = Event.Factory.MGDaily(
+            Period.New(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test());
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var eventsBefore = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
-        eventsBefore = eventsBefore.OrderBy(x => x.Start).ToArray();
+        var eventsBefore = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2));
 
-        eventsBefore.Length.Should().Be(2);
+        eventsBefore.Count.Should().Be(2);
 
-        eventsBefore[0].Start.Should().Be(JAN1_2023_UTC);
-        eventsBefore[0].End.Should().Be(JAN1_2023_UTC.AddHours(1));
+        eventsBefore.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC);
+        eventsBefore.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddHours(1));
 
-        eventsBefore[1].Start.Should().Be(JAN1_2023_UTC.AddHours(12));
-        eventsBefore[1].End.Should().Be(JAN1_2023_UTC.AddHours(13));
+        eventsBefore.ElementAt(1).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
+        eventsBefore.ElementAt(1).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
 
-        await Calendar.Recurrent.MoveAsync(@event, JAN1_2023_UTC,
-            new Period(JAN1_2023_UTC.AddHours(3), JAN1_2023_UTC.AddHours(5)));
-
+        await Calendar.MoveAsync(
+            eventsBefore.ElementAt(0).Id,
+            Period.New(JAN1_2023_UTC.AddHours(3), JAN1_2023_UTC.AddHours(5)));
 
         await DbContext.SaveChangesAsync();
-        var eventsAfter = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
+        var eventsAfter = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2));
 
-        eventsAfter.Length.Should().Be(2);
+        eventsAfter.Count.Should().Be(2);
 
-        eventsAfter[0].Start.Should().Be(JAN1_2023_UTC.AddHours(3));
-        eventsAfter[0].End.Should().Be(JAN1_2023_UTC.AddHours(5));
+        eventsAfter.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC.AddHours(3));
+        eventsAfter.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddHours(5));
 
-        eventsAfter[1].Start.Should().Be(JAN1_2023_UTC.AddHours(12));
-        eventsAfter[1].End.Should().Be(JAN1_2023_UTC.AddHours(13));
+        eventsAfter.ElementAt(1).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
+        eventsAfter.ElementAt(1).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
     }
 
     [Test]
     public async Task WhenMoveAndMovedToDoesntMatch_ShouldNotContainOriginal()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            TimeSpan.FromHours(12).TotalMinutes.Round(),
-            TimeSpan.FromHours(1).TotalMinutes.Round(),
-            new EventData("NAME"));
+        var @event = Event.Factory.MGDaily(
+            Period.New(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test());
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var eventsBefore = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
-        eventsBefore = eventsBefore.OrderBy(x => x.Start).ToArray();
+        var eventsBefore = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2));
+        eventsBefore = eventsBefore.OrderBy(x => x.Period.Start).ToArray();
 
-        eventsBefore.Length.Should().Be(2);
+        eventsBefore.Count.Should().Be(2);
 
-        eventsBefore[0].Start.Should().Be(JAN1_2023_UTC);
-        eventsBefore[0].End.Should().Be(JAN1_2023_UTC.AddHours(1));
+        eventsBefore.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC);
+        eventsBefore.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddHours(1));
 
-        eventsBefore[1].Start.Should().Be(JAN1_2023_UTC.AddHours(12));
-        eventsBefore[1].End.Should().Be(JAN1_2023_UTC.AddHours(13));
+        eventsBefore.ElementAt(1).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
+        eventsBefore.ElementAt(1).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
 
-        await Calendar.Recurrent.MoveAsync(@event, JAN1_2023_UTC,
-            new Period(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(1).AddHours(1)));
+        await Calendar.MoveAsync(
+            eventsBefore.ElementAt(0).Id,
+            eventsBefore.ElementAt(0).Period.Move(TimeSpan.FromDays(2)));
 
         await DbContext.SaveChangesAsync();
-        var eventsAfter = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
+        var eventsAfter = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2));
 
-        eventsAfter.Length.Should().Be(1);
+        eventsAfter.Count.Should().Be(1);
 
-        eventsAfter[0].Start.Should().Be(JAN1_2023_UTC.AddHours(12));
-        eventsAfter[0].End.Should().Be(JAN1_2023_UTC.AddHours(13));
+        eventsAfter.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
+        eventsAfter.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
     }
 
     [Test]
     public async Task WhenMoveAndMatchMovedToButOriginalDoesntMatch_ShouldExists()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            TimeSpan.FromDays(7).TotalMinutes.Round(),
-            TimeSpan.FromHours(1).TotalMinutes.Round(),
-            new EventData("NAME"));
+        var @event = Event.Factory.MGDaily(
+            Period.New(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test(),
+            interval: 7);
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var eventsBefore = await Calendar.GetCalculatedAsync(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(2));
-        eventsBefore.Length.Should().Be(0);
+        var eventsBefore = await Calendar.OccurrencesAsync(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(2));
+        eventsBefore.Count.Should().Be(0);
 
-        await Calendar.Recurrent.MoveAsync(@event, JAN1_2023_UTC,
-            new Period(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(1).AddHours(1)));
+        await Calendar.MoveAsync(
+            new OccurrenceId(@event.Id, JAN1_2023_UTC).ToString(),
+            Period.New(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(1).AddHours(1)));
 
         await DbContext.SaveChangesAsync();
-        var eventsAfter = await Calendar.GetCalculatedAsync(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(2));
+        var eventsAfter = await Calendar.OccurrencesAsync(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(2));
 
-        eventsAfter.Length.Should().Be(1);
+        eventsAfter.Count.Should().Be(1);
 
-        eventsAfter[0].Start.Should().Be(JAN1_2023_UTC.AddDays(1));
-        eventsAfter[0].End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
+        eventsAfter.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
+        eventsAfter.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
     }
 
     [Test]
-    public async Task WhenMoveOutsideOfRecurrentEventEffectivePeriod_SaveNewData_FilteredByOldDataInNewPeriod_VisitShouldNotBeInResult()
+    public async Task
+        WhenMoveOutsideOfRecurrentEventEffectivePeriod_SaveNewData_FilteredByOldDataInNewPeriod_VisitShouldNotBeInResult()
     {
         // Arrange
-        var visitsTime = "10:00".ToTimeOnly();
-        var @event = RecurrentEvent<EventData>.NewWeekday(
-            start: JAN1_2023_UTC,
-            end: JAN1_2023_UTC.AddDays(8),
-            timeOfTheDayUtcMinutes: visitsTime.TotalMinutes(),
-            durationMinutes: TimeSpan.FromHours(2).TotalMinutes.Round(),
-            weekdays: new[] { Weekday.Sunday },
-            timeZone: "UTC",
-            new EventData("NAME_1"));
-        var movedVisitOriginalStart = JAN1_2023_UTC.AddDays(7).WithTime(visitsTime);
-        var movedVisitNewStart = JAN1_2023_UTC.AddDays(13).WithTime(visitsTime);
+        var @event = Event.Factory.MGWeekly(
+            Period.New(
+                JAN1_2023_UTC.AddHours(10),
+                JAN1_2023_UTC.AddHours(10).AddHours(2)),
+            TimeZoneInfo.Utc.Id,
+            new EventData("NAME_1"),
+            [DayOfWeek.Sunday]);
 
-        await Calendar.Recurrent.AddAsync(@event);
+        var movedVisitOriginalStart = JAN1_2023_UTC.AddDays(7).AddHours(10);
+        var movedVisitNewStart = JAN1_2023_UTC.AddDays(13).AddHours(10);
+
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
-        
+
         // Act
-        await Calendar.Recurrent.MoveAsync(
-            @event,
-            movedVisitOriginalStart,
-            new Period(movedVisitNewStart, movedVisitNewStart.AddHours(2)));
-        await Calendar.Recurrent.SaveDataAsync(@event, movedVisitOriginalStart, new EventData("NAME_2"));
+        var occurrenceId = new OccurrenceId(@event.Id, movedVisitOriginalStart).ToString();
+
+        await Calendar.MoveAsync(
+            occurrenceId,
+            Period.New(movedVisitNewStart, movedVisitNewStart.AddHours(2)));
+
+        await Calendar.SaveDataAsync(occurrenceId, new EventData("NAME_2"));
         await DbContext.SaveChangesAsync();
         DbContext.ChangeTracker.Clear();
-        var searchedVisitResult = await Calendar.GetCalculatedAsync(
+
+        var searchedVisitResult = await Calendar.OccurrencesAsync(
             JAN1_2023_UTC.AddDays(13),
             JAN1_2023_UTC.AddDays(14),
             FilterRule.Eq("name", "NAME_1"));
 
         // Assert
-        searchedVisitResult.Length.Should().Be(0);
+        searchedVisitResult.Count.Should().Be(0);
     }
 
     [SetUp]
-    public new void SetUp()
+    public void SetUp()
     {
         CleanDatabase();
     }

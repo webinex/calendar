@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);CS1591;CS0660;CS0661</NoWarn>
     <IsPackable>false</IsPackable>
@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Webinex.Calendar.Abstractions\Webinex.Calendar.Abstractions.csproj" />
     <ProjectReference Include="..\Webinex.Calendar\Webinex.Calendar.csproj" />
   </ItemGroup>
 

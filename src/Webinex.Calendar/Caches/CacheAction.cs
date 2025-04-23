@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using Webinex.Calendar.DataAccess;
 
 namespace Webinex.Calendar.Caches;
 
@@ -10,31 +9,31 @@ internal enum CacheEventType
     Update,
 }
 
-internal abstract record CacheEvent<TData>(CacheEventType Type, EventRow<TData> Value) where TData : class, ICloneable
+internal abstract record CacheEvent<TData>(CacheEventType Type, IEventEntityBase Value) where TData : class, ICloneable
 {
-    public abstract bool TryApply(ConcurrentDictionary<EventRowId, EventRow<TData>> data);
+    public abstract bool TryApply(ConcurrentDictionary<string, IEventEntityBase> data);
 
-    public record Add(EventRow<TData> Row) : CacheEvent<TData>(CacheEventType.Add, Row)
+    public record Add(IEventEntityBase Event) : CacheEvent<TData>(CacheEventType.Add, Event)
     {
-        public override bool TryApply(ConcurrentDictionary<EventRowId, EventRow<TData>> data)
+        public override bool TryApply(ConcurrentDictionary<string, IEventEntityBase> data)
         {
-            return data.TryAdd(Row.GetEventRowId(), Row);
+            return data.TryAdd(Event.Id, Event);
         }
     }
 
-    public record Delete(EventRow<TData> Row) : CacheEvent<TData>(CacheEventType.Delete, Row)
+    public record Delete(IEventEntityBase Event) : CacheEvent<TData>(CacheEventType.Delete, Event)
     {
-        public override bool TryApply(ConcurrentDictionary<EventRowId, EventRow<TData>> data)
+        public override bool TryApply(ConcurrentDictionary<string, IEventEntityBase> data)
         {
-            return data.TryRemove(Row.GetEventRowId(), out _);
+            return data.TryRemove(Event.Id, out _);
         }
     }
 
-    public record Update(EventRow<TData> Row) : CacheEvent<TData>(CacheEventType.Update, Row)
+    public record Update(IEventEntityBase Event) : CacheEvent<TData>(CacheEventType.Update, Event)
     {
-        public override bool TryApply(ConcurrentDictionary<EventRowId, EventRow<TData>> data)
+        public override bool TryApply(ConcurrentDictionary<string, IEventEntityBase> data)
         {
-            return data.TryUpdate(Row.GetEventRowId(), Row, data[Row.GetEventRowId()]);
+            return data.TryUpdate(Event.Id, Event, data[Event.Id]);
         }
     }
 }

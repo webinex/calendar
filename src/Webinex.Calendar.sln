@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar", "Webinex.Calendar\Webinex.Calendar.csproj", "{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Abstractions", "Webinex.Calendar.Abstractions\Webinex.Calendar.Abstractions.csproj", "{1F372A6C-B1A0-494F-A7AD-00694EFE4B75}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Example", "Webinex.Calendar.Example\Webinex.Calendar.Example.csproj", "{989F517F-B658-4101-9A14-225147A6A294}"
 EndProject
@@ -9,6 +9,16 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Tests.Integration", "Webinex.Calendar.Tests.Integration\Webinex.Calendar.Tests.Integration.csproj", "{0F724366-C550-4A27-8643-4C7AE6BA8929}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.All", "Webinex.Calendar.All\Webinex.Calendar.All.csproj", "{8B086E07-D77B-4610-B657-F7A693CAEDEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.EntityFramework", "Webinex.Calendar.EntityFramework\Webinex.Calendar.EntityFramework.csproj", "{653DA779-C48D-4926-96EA-7C7448B83FB2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar", "Webinex.Calendar\Webinex.Calendar.csproj", "{0D58241E-CA0C-4544-B756-D1A090C2490E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "availability", "availability", "{BBDB09A4-870C-4940-9D8D-6A614488A402}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Availabilities.Abstractions", "Webinex.Calendar.Availabilities.Abstractions\Webinex.Calendar.Availabilities.Abstractions.csproj", "{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webinex.Calendar.Availabilities", "Webinex.Calendar.Availabilities\Webinex.Calendar.Availabilities.csproj", "{0F60ACE7-5F67-4C56-92D7-C7FF00250177}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,5 +46,25 @@ Global
 		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B086E07-D77B-4610-B657-F7A693CAEDEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{653DA779-C48D-4926-96EA-7C7448B83FB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{653DA779-C48D-4926-96EA-7C7448B83FB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{653DA779-C48D-4926-96EA-7C7448B83FB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{653DA779-C48D-4926-96EA-7C7448B83FB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D58241E-CA0C-4544-B756-D1A090C2490E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D58241E-CA0C-4544-B756-D1A090C2490E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D58241E-CA0C-4544-B756-D1A090C2490E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D58241E-CA0C-4544-B756-D1A090C2490E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F60ACE7-5F67-4C56-92D7-C7FF00250177}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F60ACE7-5F67-4C56-92D7-C7FF00250177}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F60ACE7-5F67-4C56-92D7-C7FF00250177}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F60ACE7-5F67-4C56-92D7-C7FF00250177}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B1EF327B-E9B1-4414-AA19-C4CC172C9BEA} = {BBDB09A4-870C-4940-9D8D-6A614488A402}
+		{0F60ACE7-5F67-4C56-92D7-C7FF00250177} = {BBDB09A4-870C-4940-9D8D-6A614488A402}
 	EndGlobalSection
 EndGlobal

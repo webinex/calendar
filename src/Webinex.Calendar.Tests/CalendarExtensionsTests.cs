@@ -5,7 +5,6 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using NUnit.Framework;
-using Webinex.Calendar.Common;
 
 namespace Webinex.Calendar.Tests;
 

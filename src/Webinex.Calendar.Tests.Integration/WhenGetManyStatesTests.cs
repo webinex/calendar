@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
+using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -10,39 +9,35 @@ public class WhenGetManyStatesTests : IntegrationTestsBase
     [Test]
     public async Task MoveAppearance_ShouldReturnCorrectResult()
     {
-        var @event = RecurrentEvent<EventData>.NewWeekday(
-            JAN1_2023_UTC,
-            null,
-            (int)TimeSpan.FromHours(6).TotalMinutes,
-            (int)TimeSpan.FromHours(1).TotalMinutes,
-            new[] { Weekday.Sunday, Weekday.Tuesday },
+        var @event = Event.Factory.MGWeekly(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(6).AddHours(1)),
             TimeZoneInfo.Utc.Id,
-            new EventData("NAME"));
+            EventData.Test(),
+            [DayOfWeek.Sunday, DayOfWeek.Tuesday]);
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
         var from = JAN1_2023_UTC;
         var to = JAN1_2023_UTC.Add(TimeSpan.FromDays(7));
-        var events = await Calendar.GetCalculatedAsync(from, to);
+        var events = await Calendar.OccurrencesAsync(from, to);
 
         var firstAppearance = events.First();
-        var moveFirstToPeriod = new Period(firstAppearance.Start.AddHours(1), firstAppearance.End.AddHours(1));
+        var moveFirstToPeriod = firstAppearance.Period.Move(TimeSpan.FromHours(1));
 
-        await Calendar.Recurrent.MoveAsync(@event, firstAppearance.Start, moveFirstToPeriod);
+        await Calendar.MoveAsync(firstAppearance.Id, moveFirstToPeriod);
         await DbContext.SaveChangesAsync();
         DbContext.ChangeTracker.Clear();
         
-        var states = await Calendar.Recurrent.GetManyStatesAsync(new []
-        {
-            new RecurrentEventStateId(@event.Id, firstAppearance.Start),
-        });
+        var state = await Calendar.ByIdAsync<OccurrenceAdjustment<EventData>>(firstAppearance.Id);
 
-        states.Length.Should().Be(1);
+        state.Should().NotBeNull();
+        state!.MoveTo!.Start.Should().Be(moveFirstToPeriod.Start);
+        state.MoveTo!.End.Should().Be(moveFirstToPeriod.End);
     }
 
     [SetUp]
-    public new void SetUp()
+    public void SetUp()
     {
         CleanDatabase();
     }

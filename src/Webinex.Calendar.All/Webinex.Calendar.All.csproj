@@ -2,13 +2,17 @@
   <Import Project="$(MSBuildThisFileDirectory)/Package.props" />
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Webinex.Calendar.Abstractions\Webinex.Calendar.Abstractions.csproj" />
+    <ProjectReference Include="..\Webinex.Calendar.Availabilities.Abstractions\Webinex.Calendar.Availabilities.Abstractions.csproj" />
+    <ProjectReference Include="..\Webinex.Calendar.Availabilities\Webinex.Calendar.Availabilities.csproj" />
+    <ProjectReference Include="..\Webinex.Calendar.EntityFramework\Webinex.Calendar.EntityFramework.csproj" />
     <ProjectReference Include="..\Webinex.Calendar\Webinex.Calendar.csproj" />
   </ItemGroup>
 

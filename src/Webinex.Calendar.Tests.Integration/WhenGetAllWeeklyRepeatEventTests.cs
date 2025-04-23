@@ -1,7 +1,5 @@
 ﻿using FluentAssertions;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
-using Webinex.Calendar.Repeats;
+using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -11,43 +9,37 @@ public class WhenGetAllWeeklyRepeatEventTests : IntegrationTestsBase
     [Test]
     public async Task WhenMatch_ShouldReturn()
     {
-        var @event = RecurrentEvent<EventData>.NewWeekday(
-            JAN1_2023_UTC,
-            null,
-            (int)TimeSpan.FromHours(6).TotalMinutes,
-            (int)TimeSpan.FromHours(1).TotalMinutes,
-            new[] { Weekday.Sunday, Weekday.Tuesday },
+        var @event = Event.Factory.MGWeekly(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(6).AddHours(1)),
             TimeZoneInfo.Utc.Id,
-            new EventData("NAME"));
+            EventData.Test(),
+            [DayOfWeek.Sunday, DayOfWeek.Tuesday]);
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2).AddHours(6).AddMinutes(1));
-        events.Length.Should().Be(2);
+        var events = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2).AddHours(6).AddMinutes(1));
+        events.Count.Should().Be(2);
     }
 
     [Test]
     public async Task WhenNotMatch_ShouldBeEmpty()
     {
-        var @event = RecurrentEvent<EventData>.NewWeekday(
-            JAN1_2023_UTC,
-            null,
-            (int)TimeSpan.FromHours(6).TotalMinutes,
-            (int)TimeSpan.FromHours(1).TotalMinutes,
-            new[] { Weekday.Sunday, Weekday.Tuesday },
+        var @event = Event.Factory.MGWeekly(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(6).AddHours(1)),
             TimeZoneInfo.Utc.Id,
-            new EventData("NAME"));
+            EventData.Test(),
+            [DayOfWeek.Sunday, DayOfWeek.Tuesday]);
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC.AddDays(2).AddHours(7), JAN1_2023_UTC.AddDays(3));
+        var events = await Calendar.OccurrencesAsync(JAN1_2023_UTC.AddDays(2).AddHours(7), JAN1_2023_UTC.AddDays(3));
         events.Should().BeEmpty();
     }
 
     [SetUp]
-    public new void SetUp()
+    public void SetUp()
     {
         CleanDatabase();
     }

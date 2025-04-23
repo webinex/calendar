@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Linq;
 using FluentAssertions;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
-using Webinex.Calendar.Repeats;
-using Webinex.Calendar.Repeats.Calculators;
+using Webinex.Calendar.MicrosoftGraph;
 
 namespace Webinex.Calendar.Tests.RepeatEventCalculatorTests;
 
 public class RepeatEventCalculatorScenario
 {
-    private RecurrentEvent<object>? _event;
+    private Event<object>? _event;
     private OpenPeriod? _range;
 
     public RepeatEventCalculatorScenario WithWeekdayMatch(
@@ -24,7 +20,7 @@ public class RepeatEventCalculatorScenario
     {
         _event = new RecurrentEvent<object>(
             Guid.NewGuid(),
-            Repeat.NewWeekday(
+            MGRecurrence.NewWeekday(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
                 weekdays,
@@ -52,7 +48,7 @@ public class RepeatEventCalculatorScenario
     {
         _event = new RecurrentEvent<object>(
             Guid.NewGuid(),
-            Repeat.NewDayOfMonth(
+            MGRecurrence.NewDayOfMonth(
                 (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
                 (int)TimeSpan.Parse(duration).TotalMinutes,
                 new DayOfMonth(dayOfMonth),

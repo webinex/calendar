@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(MSBuildThisFileDirectory)/../Webinex.Calendar.All/Package.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>Webinex.Calendar.Abstractions</PackageId>
+    <RootNamespace>Webinex.Calendar</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Webinex.Asky" Version="1.5.0" />
+    <PackageReference Include="Webinex.Coded" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Webinex.Calendar.Abstractions.csproj.DotSettings" />
+  </ItemGroup>
+
+
+</Project>

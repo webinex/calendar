@@ -1,6 +1,4 @@
 using FluentAssertions;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -10,31 +8,35 @@ public class WhenGetAllOneTimeEventTests : IntegrationTestsBase
     [Test]
     public async Task WhenMatch_ShouldReturn()
     {
-        await Calendar.OneTime.AddAsync(OneTimeEvent<EventData>.New(
-            new Period(JAN1_2023_UTC.AddHours(5), JAN1_2023_UTC.AddHours(6)),
-            new EventData("NAME")));
-
+        var @event = Event<EventData>.New(
+            new Period<DateTimeOffset>(JAN1_2023_UTC.AddHours(5), JAN1_2023_UTC.AddHours(6)),
+            TimeZoneInfo.Utc.Id,
+            new EventData("NAME"));
+        
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
-        events.Length.Should().Be(1);
+        var occurrences = await Calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1));
+        occurrences.Count.Should().Be(1);
     }
 
     [Test]
     public async Task WhenNotMatch_ShouldBeEmpty()
     {
-        await Calendar.OneTime.AddAsync(OneTimeEvent<EventData>.New(
-            new Period(JAN1_2023_UTC.AddHours(5), JAN1_2023_UTC.AddHours(6)),
-            new EventData("NAME")));
+        var @event = Event<EventData>.New(
+            new Period<DateTimeOffset>(JAN1_2023_UTC.AddHours(5), JAN1_2023_UTC.AddHours(6)),
+            TimeZoneInfo.Utc.Id,
+            new EventData("NAME"));
 
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddDays(1));
-        events.Should().BeEmpty();
+        var occurrences = await Calendar.OccurrencesAsync(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddDays(1));
+        occurrences.Should().BeEmpty();
     }
 
     [SetUp]
-    public new void SetUp()
+    public void SetUp()
     {
         CleanDatabase();
     }

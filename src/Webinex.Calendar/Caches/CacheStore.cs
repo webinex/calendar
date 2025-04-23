@@ -1,28 +1,26 @@
 ﻿using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.DataAccess;
+using Webinex.Asky;
+using Webinex.Calendar.Extensions;
 
 namespace Webinex.Calendar.Caches;
 
 internal interface ICacheStore<TData> where TData : class, ICloneable
 {
-    ImmutableDictionary<EventRowId, EventRow<TData>> RowById { get; }
+    IReadOnlyDictionary<string, IEventEntityBase> RowById { get; }
     void Apply(IEnumerable<CacheEvent<TData>> events);
 }
 
 internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TData : class, ICloneable
 {
     private readonly CacheTimer _timer;
-    private Period? _period = null;
+    private Period<DateTimeOffset>? _period = null;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly CalendarCacheOptions<TData> _options;
-    private ConcurrentDictionary<EventRowId, EventRow<TData>> _rowById = new();
+    private ConcurrentDictionary<string, IEventEntityBase> _rowById = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public CacheStore(
@@ -35,7 +33,7 @@ internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TDat
         _timer = new CacheTimer(RefreshAsync, CalendarCacheOptions.TIMER_TICK, options.Tick!.Value, logger);
     }
 
-    public ImmutableDictionary<EventRowId, EventRow<TData>> RowById => _rowById.ToImmutableDictionary();
+    public IReadOnlyDictionary<string, IEventEntityBase> RowById => _rowById.AsReadOnly();
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -52,28 +50,28 @@ internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TDat
     private async Task PreloadAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ICalendarDbContext<TData>>();
-        await PreloadAsync(dbContext);
+        var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository<TData>>();
+        await PreloadAsync(eventRepository);
     }
 
-    private async Task PreloadAsync(ICalendarDbContext<TData> dbContext)
+    private async Task PreloadAsync(IEventRepository<TData> eventRepository)
     {
         var now = DateTimeOffset.UtcNow.StartOfMinute();
-        _period = new Period(now.Subtract(_options.Previous!.Value), now.Add(_options.Next!.Value));
+        _period = new Period<DateTimeOffset>(now.Subtract(_options.Previous!.Value), now.Add(_options.Next!.Value));
 
-        var rows = await GetAllAsync(dbContext, _period);
-        _rowById = new ConcurrentDictionary<EventRowId, EventRow<TData>>(rows.ToDictionary(x => x.GetEventRowId()));
+        var rows = await GetAllAsync(eventRepository, _period);
+        _rowById = new ConcurrentDictionary<string, IEventEntityBase>(rows.ToDictionary(x => x.Id));
     }
 
     private async Task RefreshAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ICalendarDbContext<TData>>();
+        var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository<TData>>();
         await _semaphore.WaitAsync();
 
         try
         {
-            await RefreshAsync(dbContext);
+            await RefreshAsync(eventRepository);
         }
         finally
         {
@@ -81,22 +79,28 @@ internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TDat
         }
     }
 
-    private async Task RefreshAsync(ICalendarDbContext<TData> dbContext)
+    private async Task RefreshAsync(IEventRepository<TData> eventRepository)
     {
         if (_period == null)
             throw new InvalidOperationException($"{nameof(_period)} is null and it's unexpected at this moment");
 
         var now = DateTimeOffset.UtcNow.StartOfMinute();
-        var period = new Period(now.Subtract(_options.Previous!.Value), now.Add(_options.Next!.Value));
+        var period = new Period<DateTimeOffset>(now.Subtract(_options.Previous!.Value), now.Add(_options.Next!.Value));
 
-        var rows = await GetAllAsync(dbContext, period);
-        _rowById = new ConcurrentDictionary<EventRowId, EventRow<TData>>(rows.ToDictionary(x => x.GetEventRowId()));
+        var rows = await GetAllAsync(eventRepository, period);
+        _rowById = new ConcurrentDictionary<string, IEventEntityBase>(rows.ToDictionary(x => x.Id));
         _period = period;
     }
 
-    private async Task<EventRow<TData>[]> GetAllAsync(ICalendarDbContext<TData> dbContext, Period period)
+    private async Task<IReadOnlyCollection<IEventEntityBase>> GetAllAsync(
+        IEventRepository<TData> eventRepository,
+        Period<DateTimeOffset> period)
     {
-        return await dbContext.Events.Where(EventRow<TData>.InPeriodExpression(period)).ToArrayAsync();
+        var filterRule = FilterRule.And(
+            FilterRule.Lt("effective.start", period.End),
+            FilterRule.Gt("effective.end", period.Start));
+
+        return await eventRepository.GetAllAsync<IEventEntityBase>(filterRule);
     }
 
     public void Apply(IEnumerable<CacheEvent<TData>> events)
@@ -108,7 +112,10 @@ internal class CacheStore<TData> : IHostedService, ICacheStore<TData> where TDat
         {
             foreach (var cacheEvent in events)
             {
-                if (!cacheEvent.Value.InPeriod(_period!))
+                if (cacheEvent.Value is Event<TData> @event && !@event.Intersects(_period!))
+                    continue;
+                
+                if (cacheEvent.Value is OccurrenceAdjustment<TData> state && !state.Period.Intersects(_period!) && state.MoveTo?.Intersects(_period!) != true)
                     continue;
 
                 if (!cacheEvent.TryApply(_rowById))

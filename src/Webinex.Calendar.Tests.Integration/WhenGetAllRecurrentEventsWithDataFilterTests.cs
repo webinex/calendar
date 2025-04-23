@@ -1,6 +1,8 @@
 ﻿using FluentAssertions;
 using Webinex.Asky;
-using Webinex.Calendar.Events;
+using Webinex.Calendar.Extensions;
+using Webinex.Calendar.MicrosoftGraph;
+using Webinex.Calendar.Tests.Integration.Common;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -10,70 +12,66 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
     [Test]
     public async Task WhenRangeMatchEventAndNoState_EventPredicateMatch_ShouldReturn()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            intervalMinutes: 24 * 60,
-            durationMinutes: 30,
-            new EventData("NAME"));
+        var @event = Event.Factory.MGDaily(
+            new Period<DateTimeOffset>(JAN1_2023_UTC, JAN1_2023_UTC.AddMinutes(30)),
+            "UTC",
+            EventData.Test());
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(
+        var occurrences = await Calendar.OccurrencesAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NAME"));
 
-        events.Length.Should().Be(1);
+        occurrences.Count.Should().Be(1);
     }
 
     [Test]
     public async Task WhenRangeMatchEventAndState_StateMatchPredicateButEventDontMatchPredicate_ShouldReturn()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            intervalMinutes: 24 * 60,
-            durationMinutes: 30,
-            new EventData("NAME"));
+        var @event = Event.Factory.MGDaily(
+            new Period<DateTimeOffset>(JAN1_2023_UTC, JAN1_2023_UTC.AddMinutes(30)),
+            "UTC",
+            EventData.Test());
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        await Calendar.Recurrent.AddDataAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
+        var occurrenceId = new OccurrenceId(@event.Id, JAN1_2023_UTC);
+        await Calendar.SaveDataAsync(occurrenceId.ToString(), new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(
+        var events = await Calendar.OccurrencesAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NEW_NAME"));
 
-        events.Length.Should().Be(1);
+        events.Count.Should().Be(1);
     }
 
     [Test]
     public async Task WhenRangeMatchEventAndState_StateDoesntMatchPredicateButEventMatchPredicate_ShouldReturn()
     {
-        var @event = RecurrentEvent<EventData>.NewInterval(
-            JAN1_2023_UTC,
-            null,
-            intervalMinutes: 24 * 60,
-            durationMinutes: 30,
-            new EventData("NAME"));
+        
+        var @event = Event.Factory.MGDaily(
+            new Period<DateTimeOffset>(JAN1_2023_UTC, JAN1_2023_UTC.AddMinutes(30)),
+            "UTC",
+            EventData.Test());
 
-        await Calendar.Recurrent.AddAsync(@event);
+        await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        await Calendar.Recurrent.AddDataAsync(@event, JAN1_2023_UTC, new EventData("NEW_NAME"));
+        await Calendar.SaveDataAsync(new OccurrenceId(@event.Id, JAN1_2023_UTC).ToString(), new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
-        var events = await Calendar.GetCalculatedAsync(
+        var events = await Calendar.OccurrencesAsync(
             JAN1_2023_UTC,
             JAN1_2023_UTC.AddHours(12),
             FilterRule.Eq("name", "NAME"));
 
-        events.Length.Should().Be(0);
+        events.Count.Should().Be(0);
     }
 
     [SetUp]

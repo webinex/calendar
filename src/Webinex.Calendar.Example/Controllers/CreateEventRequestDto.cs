@@ -25,12 +25,12 @@ public class CreateEventRequestDto : IValidatableObject
 
     public bool IsOneTimeEvent() => Type == CreateEventRequestType.OneTime;
 
-    public OneTimeEvent<EventData> ToOneTimeEvent()
+    public Event<EventData> ToOneTimeEvent()
     {
         if (!IsOneTimeEvent())
             throw new InvalidOperationException();
         
-        return OneTimeEvent<EventData>.New(new Period(Start, End!.Value), new EventData(Title));
+        return Event<EventData>.New(new Period(Start, End!.Value), new EventData(Title));
     }
 
     public RecurrentEvent<EventData> ToRecurrentEvent()

@@ -1,21 +1,18 @@
 ﻿using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using Webinex.Asky;
-using Webinex.Calendar.DataAccess;
-using Webinex.Calendar.Filters;
 
 namespace Webinex.Calendar.Caches;
 
 internal interface ICache<TData> where TData : class, ICloneable
 {
     bool TryGetAll(
-        DateTimeOffset from,
-        DateTimeOffset to,
+        Period<DateTimeOffset> period,
         FilterRule? dataFilterRule,
-        out ImmutableArray<EventRow<TData>>? result);
+        out IReadOnlyCollection<IEventEntityBase>? result);
 
     void Push(IEnumerable<CacheEvent<TData>> values);
+    void Flush();
 }
 
 internal class Cache<TData> : ICache<TData>
@@ -26,42 +23,48 @@ internal class Cache<TData> : ICache<TData>
     private readonly CalendarCacheOptions<TData> _options;
     private readonly IAskyFieldMap<TData> _dataFieldMap;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
-    private readonly ICalendarSettings<TData> _settings;
 
     public Cache(
         ICacheStore<TData> store,
         CalendarCacheOptions<TData> options,
-        IAskyFieldMap<TData> dataFieldMap,
-        ICalendarDbContext<TData> dbContext,
-        ICalendarSettings<TData> settings)
+        IAskyFieldMap<TData> dataFieldMap)
     {
         _store = store;
         _options = options;
         _dataFieldMap = dataFieldMap;
-        _settings = settings;
-
-        ((DbContext)dbContext).SavedChanges += (_, _) => Flush();
     }
 
     public bool TryGetAll(
-        DateTimeOffset from,
-        DateTimeOffset to,
+        Period<DateTimeOffset> period,
         FilterRule? dataFilterRule,
-        out ImmutableArray<EventRow<TData>>? result)
+        out IReadOnlyCollection<IEventEntityBase>? result)
     {
         result = null;
 
-        if (_options.Min() > from || _options.Max() < to)
+        if (_options.Min() > period.Start || _options.Max() < period.End)
             return false;
 
-        var dictionary = new ConcurrentDictionary<EventRowId, EventRow<TData>>(_store.RowById);
+        var dictionary = new ConcurrentDictionary<string, IEventEntityBase>(_store.RowById);
         foreach (var cacheEvent in _queue)
             cacheEvent.TryApply(dictionary);
 
         var dataFilter = dataFilterRule != null ? AskyExpressionFactory.Create(_dataFieldMap, dataFilterRule) : null;
-        var filters = new DbQuery<TData>(from, to, dataFilter, _settings.TimeZone, DbFilterOptimization.Default);
-        result = filters.ToArray(dictionary.Values).ToImmutableArray();
+        result = Match(dictionary.Values, period, dataFilter);
         return true;
+    }
+
+    private IReadOnlyCollection<IEventEntityBase> Match(
+        IEnumerable<IEventEntityBase> events,
+        Period<DateTimeOffset> period,
+        Expression<Func<TData, bool>>? dataPredicateExpression)
+    {
+        var dataPredicate = dataPredicateExpression?.Compile();
+        Func<IEventEntityBase, bool>? eventDataPredicate = dataPredicate != null
+            ? eventBase => (eventBase is Event<TData> @event && dataPredicate(@event.Data)) ||
+                             (eventBase is OccurrenceAdjustment<TData> eventState && (eventState.Data == null ||
+                                                                            dataPredicate(eventState.Data)))
+            : null;
+        return events.Where(x => x.Period.Intersects(period) && eventDataPredicate?.Invoke(x) != false).ToArray();
     }
 
     public void Push(IEnumerable<CacheEvent<TData>> values)
@@ -80,7 +83,7 @@ internal class Cache<TData> : ICache<TData>
         }
     }
 
-    private void Flush()
+    public void Flush()
     {
         _semaphore.Wait();
 

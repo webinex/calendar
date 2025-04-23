@@ -1,164 +1,87 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Webinex.Asky;
 using Webinex.Calendar.Caches;
-using Webinex.Calendar.DataAccess;
-using Webinex.Calendar.Filters;
+using Webinex.Calendar.Services;
 
 namespace Webinex.Calendar;
 
 public interface ICalendarConfiguration
 {
-    Type EventDataType { get; }
-    Type EventRowType { get; }
-    IDictionary<string, object> Values { get; }
-
-    ICalendarConfiguration UseTimeZone(string timeZone);
-    ICalendarConfiguration UseDbFilterOptimization(DbFilterOptimization optimization);
-    ICalendarConfiguration AddDbContext<TDbContext>() where TDbContext : DbContext;
-    ICalendarConfiguration AddAskyFieldMap<T>();
-    ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
+    Type DataType { get; }
+    IDictionary<string, object> Data { get; }
+    IServiceCollection Services { get; }
+    // TODO: restore cache services
+    // ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick);
 }
 
 internal class CalendarConfiguration : ICalendarConfiguration
 {
-    private readonly IServiceCollection _services;
+    public Type DataType { get; }
+    public IDictionary<string, object> Data { get; } = new Dictionary<string, object>();
+    public IServiceCollection Services { get; }
 
-    internal CalendarConfiguration(Type eventDataType, IServiceCollection services)
+    private CalendarConfiguration(Type eventDataType, IServiceCollection services)
     {
-        _services = services ?? throw new ArgumentNullException(nameof(services));
-        EventDataType = eventDataType ?? throw new ArgumentNullException(nameof(eventDataType));
+        Services = services ?? throw new ArgumentNullException(nameof(services));
+        DataType = eventDataType ?? throw new ArgumentNullException(nameof(eventDataType));
 
-        _services.AddScoped(
-            typeof(ICalendar<>).MakeGenericType(EventDataType),
-            typeof(Calendar<>).MakeGenericType(EventDataType));
+        Services.AddSingleton(this);
 
-        _services.AddScoped(
-            typeof(IRecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType),
-            typeof(RecurrentEventRowAskyFieldMap<>).MakeGenericType(EventDataType));
+        Services.AddScoped(
+            typeof(ICalendar<>).MakeGenericType(DataType),
+            typeof(Calendar<>).MakeGenericType(DataType));
 
-        _services.AddScoped(
-            typeof(IRecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType),
-            typeof(RecurrentEventStateAskyFieldMap<>).MakeGenericType(EventDataType));
+        Services.AddTransient(
+            typeof(IAskyFieldMap<>).MakeGenericType(typeof(Occurrence<>).MakeGenericType(DataType)),
+            typeof(OccurrenceFieldMap<>).MakeGenericType(DataType));
 
-        Settings = (CalendarSettings)Activator.CreateInstance(
-            typeof(CalendarSettings<>).MakeGenericType(EventDataType))!;
+        Services.AddTransient(
+            typeof(IOccurrenceUpdateService<>).MakeGenericType(DataType),
+            typeof(OccurrenceUpdateService<>).MakeGenericType(DataType));
+        
+        Services.AddTransient(typeof(RecurrentEventUpdateService<>).MakeGenericType(DataType));
 
-        _services.AddSingleton(typeof(ICalendarSettings<>).MakeGenericType(EventDataType), Settings);
-    }
+        Services.AddTransient(
+            typeof(IOccurrenceCancellationService<>).MakeGenericType(DataType),
+            typeof(OccurrenceCancellationService<>).MakeGenericType(DataType));
 
-    private Type CalendarDbContextType => typeof(ICalendarDbContext<>).MakeGenericType(EventDataType);
-    private Type AskyFieldMapInterfaceType => typeof(IAskyFieldMap<>).MakeGenericType(EventDataType);
-
-    public Type EventDataType { get; }
-    public Type EventRowType => typeof(EventRow<>).MakeGenericType(EventDataType);
-
-    public IDictionary<string, object> Values { get; } = new Dictionary<string, object>();
-    private CalendarSettings Settings { get; }
-
-    public ICalendarConfiguration UseTimeZone(string timeZone)
-    {
-        Settings.TimeZone = timeZone;
-        return this;
-    }
-
-    public ICalendarConfiguration UseDbFilterOptimization(DbFilterOptimization optimization)
-    {
-        Settings.DbQueryOptimization = optimization;
-        return this;
-    }
-
-    public ICalendarConfiguration AddDbContext<TDbContext>()
-        where TDbContext : DbContext
-    {
-        AssertCorrectDbContextType(typeof(TDbContext));
-        _services.AddScoped(CalendarDbContextType, sp => sp.GetService(typeof(TDbContext))!);
-        return this;
-    }
-
-    public ICalendarConfiguration AddAskyFieldMap<T>()
-    {
-        if (!typeof(T).IsAssignableTo(AskyFieldMapInterfaceType))
-        {
-            throw new InvalidOperationException(
-                $"{typeof(T).FullName} might be assignable to {AskyFieldMapInterfaceType.FullName}");
-        }
-
-        _services.AddScoped(AskyFieldMapInterfaceType, typeof(T));
-        return this;
+        Services.AddTransient(
+            typeof(IOccurrenceReadService<>).MakeGenericType(DataType),
+            typeof(OccurrenceReadService<>).MakeGenericType(DataType));
     }
 
     public ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick)
     {
-        var cacheStoreType = typeof(CacheStore<>).MakeGenericType(EventDataType);
+        var cacheStoreType = typeof(CacheStore<>).MakeGenericType(DataType);
 
-        _services.AddSingleton(cacheStoreType);
+        Services.AddSingleton(cacheStoreType);
 
-        _services.AddSingleton(
-            typeof(ICacheStore<>).MakeGenericType(EventDataType),
+        Services.AddSingleton(
+            typeof(ICacheStore<>).MakeGenericType(DataType),
             x => x.GetRequiredService(cacheStoreType));
 
-        _services.AddSingleton(
+        Services.AddSingleton(
             typeof(IHostedService),
             x => x.GetRequiredService(cacheStoreType));
 
-        _services.AddScoped(
-            typeof(ICache<>).MakeGenericType(EventDataType),
-            typeof(Cache<>).MakeGenericType(EventDataType));
+        Services.AddScoped(
+            typeof(ICache<>).MakeGenericType(DataType),
+            typeof(Cache<>).MakeGenericType(DataType));
 
-        _services.AddSingleton(
-            typeof(CalendarCacheOptions<>).MakeGenericType(EventDataType),
-            CalendarCacheOptions.NewEnabled(EventDataType, lt, gte, tick));
+        Services.AddSingleton(
+            typeof(CalendarCacheOptions<>).MakeGenericType(DataType),
+            CalendarCacheOptions.NewEnabled(DataType, lt, gte, tick));
 
         return this;
     }
 
-    public void Complete()
+    internal static CalendarConfiguration GetOrCreate<TData>(IServiceCollection services)
     {
-        AddEmptyAskyFieldMapIfNotConfigured();
-        AddNoCacheIfNotConfigured();
-    }
+        var instance = (CalendarConfiguration?) services.FirstOrDefault(x =>
+            x.ServiceType == typeof(CalendarConfiguration) &&
+            ((CalendarConfiguration)x.ImplementationInstance!).DataType == typeof(TData))?.ImplementationInstance;
 
-    private void AddEmptyAskyFieldMapIfNotConfigured()
-    {
-        var askyFieldMapConfigured = _services.Any(x => x.ServiceType == AskyFieldMapInterfaceType);
-
-        if (!askyFieldMapConfigured)
-        {
-            _services.AddSingleton(AskyFieldMapInterfaceType,
-                typeof(EmptyAskyFieldMap<>).MakeGenericType(EventDataType));
-        }
-    }
-
-    private void AddNoCacheIfNotConfigured()
-    {
-        var service = _services.Any(x => x.ServiceType == typeof(ICache<>).MakeGenericType(EventDataType));
-
-        if (!service)
-        {
-            _services.AddSingleton(
-                typeof(ICache<>).MakeGenericType(EventDataType),
-                typeof(NoCache<>).MakeGenericType(EventDataType));
-        }
-    }
-
-    private void AssertCorrectDbContextType(Type type)
-    {
-        if (!type.IsAssignableTo(CalendarDbContextType))
-        {
-            throw new InvalidOperationException(
-                $"{type.FullName} might be assignable to {CalendarDbContextType.FullName}");
-        }
-    }
-
-    private class CalendarSettings : ICalendarSettings
-    {
-        public string TimeZone { get; set; } = TimeZoneInfo.Utc.Id;
-        public DbFilterOptimization DbQueryOptimization { get; set; } = DbFilterOptimization.Default;
-    }
-
-    private class CalendarSettings<TData> : CalendarSettings, ICalendarSettings<TData>
-    {
+        return instance ?? new CalendarConfiguration(typeof(TData), services);
     }
 }

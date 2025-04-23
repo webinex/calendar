@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using Webinex.Calendar.Common;
+using Webinex.Calendar.Extensions;
 
 namespace Webinex.Calendar.Caches;
 

@@ -1,66 +1,37 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Webinex.Calendar.DataAccess;
+using Webinex.Calendar.EntityFramework;
 
 namespace Webinex.Calendar.Tests.Integration.Setups;
 
-public class TestDbContext : DbContext, ICalendarDbContext<EventData>
+public class TestDbContext : DbContext
 {
     public TestDbContext()
         : base(new DbContextOptionsBuilder<TestDbContext>().UseSqlServer(SQL_DB_CONNECTION_STRING).Options)
     {
     }
 
-    public DbSet<EventRow<EventData>> Events { get; protected set; } = null!;
-
     protected override void OnModelCreating(ModelBuilder model)
     {
-        model.Entity<EventRow<EventData>>(row =>
-        {
-            row.ToTable(EVENTS_TABLE_NAME, SCHEMA_NAME);
-            row.HasKey(x => x.Id);
-
-            row
-                .HasOne(e => e.RecurrentEvent)
-                .WithMany()
-                .HasForeignKey(x => x.RecurrentEventId)
-                .OnDelete(DeleteBehavior.ClientCascade);
-
-            row.OwnsOne(x => x.Effective, effective =>
+        model.AddEvent<EventData>(
+            schemaName: SCHEMA_NAME,
+            tableName: EVENTS_TABLE_NAME,
+            configureData: data =>
             {
-                effective.Property(x => x.Start).HasColumnName("Effective_Start");
-                effective.Property(x => x.End).HasColumnName("Effective_End");
+                data.OwnsOne(
+                    e => e.NValue,
+                    n => n.Property(e => e.Value).HasColumnName("Data_NValue").HasMaxLength(250));
+                data.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250);
             });
 
-            row.OwnsOne(x => x.MoveTo, moveTo =>
+        model.AddRecurrentEvent<EventData>(
+            schemaName: SCHEMA_NAME,
+            tableName: RECURRENT_EVENTS_TABLE_NAME,
+            configureData: data =>
             {
-                moveTo.Property(x => x.Start).HasColumnName("MoveTo_Start");
-                moveTo.Property(x => x.End).HasColumnName("MoveTo_End");
+                data.OwnsOne(
+                    e => e.NValue,
+                    n => n.Property(e => e.Value).HasColumnName("Data_NValue").HasMaxLength(250));
+                data.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250);
             });
-
-            row.OwnsOne(x => x.Repeat, repeat =>
-            {
-                repeat.Property(x => x.Type).HasColumnName("Repeat_Type");
-                repeat.Property(x => x.Interval).HasColumnName("Repeat_Interval");
-                repeat.Property(x => x.DurationMinutes).HasColumnName("Repeat_DurationMinutes");
-                repeat.Property(x => x.TimeOfTheDayInMinutes).HasColumnName("Repeat_TimeOfTheDayInMinutes");
-                repeat.Property(x => x.OvernightDurationMinutes).HasColumnName("Repeat_OvernightDurationMinutes");
-                repeat.Property(x => x.SameDayLastTime).HasColumnName("Repeat_SameDayLastTime");
-                repeat.Property(x => x.TimeZone).HasColumnName("Repeat_TimeZone");
-                repeat.Property(x => x.Monday).HasColumnName("Repeat_Monday");
-                repeat.Property(x => x.Tuesday).HasColumnName("Repeat_Tuesday");
-                repeat.Property(x => x.Wednesday).HasColumnName("Repeat_Wednesday");
-                repeat.Property(x => x.Thursday).HasColumnName("Repeat_Thursday");
-                repeat.Property(x => x.Friday).HasColumnName("Repeat_Friday");
-                repeat.Property(x => x.Saturday).HasColumnName("Repeat_Saturday");
-                repeat.Property(x => x.Sunday).HasColumnName("Repeat_Sunday");
-                repeat.Property(x => x.DayOfMonth).HasColumnName("Repeat_DayOfMonth");
-            });
-
-            row.OwnsOne(x => x.Data, o =>
-            {
-                o.OwnsOne(e => e.NValue, n => n.Property(e => e.Value).HasColumnName("Data_NValue").HasMaxLength(250));
-                o.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250);
-            });
-        });
     }
 }

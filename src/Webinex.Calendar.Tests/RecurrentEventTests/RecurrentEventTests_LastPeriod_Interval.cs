@@ -1,14 +1,11 @@
-﻿using FluentAssertions;
-using NUnit.Framework;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
+﻿using NUnit.Framework;
 
 namespace Webinex.Calendar.Tests.RecurrentEventTests;
 
 // ReSharper disable once InconsistentNaming
 public class RecurrentEventTests_LastPeriod_Interval
 {
-    private RecurrentEvent<object> _subject = null!;
+    private Event<object> _subject = null!;
 
     [Test]
     public void WhenBeforeEffectiveStart_ShouldReturnNull()

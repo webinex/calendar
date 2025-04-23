@@ -1,6 +1,4 @@
-﻿using Webinex.Calendar.Common;
-
-namespace Webinex.Calendar.Example;
+﻿namespace Webinex.Calendar.Example;
 
 public class EventData : Equatable, ICloneable
 {

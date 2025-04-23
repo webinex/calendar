@@ -1,6 +1,4 @@
-﻿using Webinex.Calendar.Common;
-
-namespace Webinex.Calendar.Tests.Integration.Setups;
+﻿namespace Webinex.Calendar.Tests.Integration.Setups;
 
 public class EventData : Equatable, ICloneable
 {
@@ -28,6 +26,11 @@ public class EventData : Equatable, ICloneable
         return new EventData(Name);
     }
 
+    public static EventData Test()
+    {
+        return new EventData("NAME");
+    }
+
     public class NestedValue : Equatable
     {
         public string Value { get; set; }
@@ -42,4 +45,5 @@ public class EventData : Equatable, ICloneable
             yield return Value;
         }
     }
+    
 }

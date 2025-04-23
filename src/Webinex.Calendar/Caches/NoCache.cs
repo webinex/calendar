@@ -1,18 +1,14 @@
-﻿using System.Collections.Immutable;
-using Webinex.Asky;
-using Webinex.Calendar.DataAccess;
+﻿using Webinex.Asky;
 
 namespace Webinex.Calendar.Caches;
 
 internal class NoCache<TData> : ICache<TData>
     where TData : class, ICloneable
 {
-
     public bool TryGetAll(
-        DateTimeOffset from,
-        DateTimeOffset to,
+        Period<DateTimeOffset> period,
         FilterRule? dataFilterRule,
-        out ImmutableArray<EventRow<TData>>? result)
+        out IReadOnlyCollection<IEventEntityBase>? result)
     {
         result = null;
         return false;
@@ -22,8 +18,7 @@ internal class NoCache<TData> : ICache<TData>
     {
     }
 
-    public Task Flush()
+    public void Flush()
     {
-        return Task.CompletedTask;
     }
 }
