@@ -44,8 +44,8 @@ internal class RecurrentEventUpdateService<TData>
             Args.Id.Start,
             Args.Id.Start.Add(ParentEvent.Duration()));
 
-        private TimeSpan NewEventGroupOffset => NewEventPeriod.Start - Args.Id.Start + ParentEvent.Group.Offset;
-        private EventGroup NewEventGroup => new(ParentEvent.Group.Id, NewEventGroupOffset);
+        private TimeSpan NewEventGroupOffset => NewEventPeriod.Start - Args.Id.Start + ParentEvent.Group.OffsetTimeSpan();
+        private EventGroupId NewEventGroupId => new(ParentEvent.Group.Id, NewEventGroupOffset);
         private string NewEventTimeZone => Args.TimeZone?.Value ?? ParentEvent.TimeZone;
         private TData NewEventData => Args.Data?.Value ?? Adjustment?.Data ?? ParentEvent.Data;
         private DateOnly NewEventStartDate => NewEventPeriod.Start.ToDateOnly(NewEventTimeZone);
@@ -99,7 +99,7 @@ internal class RecurrentEventUpdateService<TData>
                 NewEventTimeZone,
                 NewEventData,
                 recurrence,
-                group: NewEventGroup);
+                group: NewEventGroupId);
 
             return Operation.Add(newEvent);
         }

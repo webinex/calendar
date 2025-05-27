@@ -45,12 +45,27 @@ internal class OccurrenceCancellationService<TData> : IOccurrenceCancellationSer
     {
         var @event = await _eventRepository.EventAsync(id.EventId) ?? throw CodedException.NotFound(id.EventId);
         var events = await _eventRepository.GetAllAsync<IEventEntityBase>(FilterRule.Eq("group.id", @event.Group.Id));
-        @event.SetEndDate(id.Start.ToDateOnly(@event.TimeZone).AddDays(-1));
+        var eventOperation = MapEndUntilOccurenceRecurrenceEventOperation(@event, id);
         
         return events
             .Where(x => x.Period.Start >= id.Start)
             .Select(Operation.Remove)
-            .Concat([Operation.Update(@event)]).ToArray();
+            .Concat([eventOperation]).ToArray();
+    }
+
+    /**
+     * When occurence is first occurence of recurrent event, it might be deleted
+     * otherwise it might be ended a date before occurence
+     */
+    private Operation MapEndUntilOccurenceRecurrenceEventOperation(Event<TData> @event, OccurrenceId id)
+    {
+        var endDateNew = id.Start.ToDateOnly(@event.TimeZone).AddDays(-1);
+        
+        if (endDateNew < @event.Recurrence!.StartDate())
+            return Operation.Remove(@event);
+        
+        @event.SetEndDate(endDateNew);
+        return Operation.Update(@event);
     }
 
     /*

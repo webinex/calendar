@@ -9,7 +9,7 @@ public class EventRow<TData> : IEventRow
     public Period<DateTimeOffset> Effective { get; protected set; } = null!;
     public Period<DateTimeOffset> Period { get; protected set; } = null!;
     public string? TimeZone { get; protected set; }
-    public EventGroup Group { get; protected set; } = null!;
+    public EventGroupId Group { get; protected set; } = null!;
     public TData? Data { get; protected set; }
     public bool? Cancelled { get; protected set; }
     public Period<DateTimeOffset>? MoveTo { get; protected set; }
@@ -25,7 +25,7 @@ public class EventRow<TData> : IEventRow
         Period<DateTimeOffset> effective,
         Period<DateTimeOffset> period,
         string? timeZone,
-        EventGroup group,
+        EventGroupId groupId,
         TData? data = null,
         bool? cancelled = null,
         Period<DateTimeOffset>? moveTo = null)
@@ -36,7 +36,7 @@ public class EventRow<TData> : IEventRow
         Effective = effective.Clone();
         Period = period.Clone();
         TimeZone = timeZone;
-        Group = group.Clone();
+        Group = groupId.Clone();
         Data = (TData?)data?.Clone();
         Cancelled = cancelled;
         MoveTo = moveTo?.Clone();

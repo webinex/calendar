@@ -26,7 +26,10 @@ public class OccurrenceCalculator<TData>
             .ToArray();
     }
 
-    public static Occurrence<TData> Calculate(OccurrenceId id, Event<TData> @event, OccurrenceAdjustment<TData>? adjustment)
+    public static Occurrence<TData> Calculate(
+        OccurrenceId id,
+        Event<TData> @event,
+        OccurrenceAdjustment<TData>? adjustment)
     {
         return @event.Recurrence != null ? CalculateRecurrent(id, @event, adjustment) : CalculateOneTime(@event);
     }
@@ -75,16 +78,16 @@ public class OccurrenceCalculator<TData>
         foreach (var period in RecurrenceCalculator.Occurrences(@event, _period.ToOpenPeriod()))
         {
             var id = new OccurrenceId(@event.Id, period.Start);
-            var state = _adjustments.FirstOrDefault(x => x.Id == id.ToString());
+            var adjustment = _adjustments.FirstOrDefault(x => x.Id == id.ToString());
 
-            if (state?.Cancelled == true)
+            if (adjustment?.Cancelled == true)
                 continue;
 
             yield return new Occurrence<TData>(
                 id.ToString(),
                 @event.Group,
-                state?.MoveTo ?? period,
-                state?.Data ?? @event.Data);
+                adjustment?.MoveTo ?? period,
+                adjustment?.Data ?? @event.Data);
         }
     }
 
@@ -98,12 +101,16 @@ public class OccurrenceCalculator<TData>
         Event<TData> @event,
         Occurrence<TData>[] occurrences)
     {
-        foreach (var state in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled))
+        foreach (var adjustment in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled))
         {
-            if (occurrences.Any(x => x.Id == state.Id))
+            if (occurrences.Any(x => x.Id == adjustment.Id))
                 continue;
 
-            yield return new Occurrence<TData>(state.Id, @event.Group, state.MoveTo!, state.Data ?? @event.Data);
+            yield return new Occurrence<TData>(
+                adjustment.Id,
+                @event.Group,
+                adjustment.MoveTo!,
+                adjustment.Data ?? @event.Data);
         }
     }
 }

@@ -183,8 +183,8 @@ public class EventRepository<TData> : IEventRepository<TData>
         var queryable = Events
             .Where(x => x.Effective.Start < period.End)
             // optimizes index as explicitly define a range for an effective.start
-            // we assume a limitation of max event duration is 24h and max move is 24h
-            .Where(x => x.Effective.Start >= period.Start.AddDays(-2))
+            // we assume a limitation of max event duration is 24h and max move is 72h
+            .Where(x => x.Effective.Start >= period.Start.AddDays(-4))
             .Where(x => x.Effective.End > period.Start);
 
         if (dataFilterRule != null)
@@ -256,26 +256,29 @@ public class EventRepository<TData> : IEventRepository<TData>
             : eventRowCount;
     }
 
+    public async Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids)
+    {
+        ids = ids?.Distinct().ToArray() ?? throw new ArgumentNullException(nameof(ids));
+        if (!ids.Any()) return [];
+
+        var result = await DbContext.Set<RecurrentEventRow<TData>>()
+            .Where(x => ids.Contains(x.Group.Id))
+            .GroupBy(x => x.Group.Id)
+            .Select(x => new
+            {
+                Id = x.Key,
+                Start = x.Min(e => e.Recurrence.MGRecurrence!.Period.Start),
+                End = x.Max(e => e.Recurrence.MGRecurrence!.Period.End ?? DateOnly.MaxValue),
+            })
+            .ToArrayAsync();
+
+        return result.Select(x => new EventGroup(x.Id, x.Start, x.End)).ToArray();
+    }
+
     private async Task<int> CountInternalAsync<TRow>(FilterRule? filterRule) where TRow : class, IEventRow
     {
         return await Queryable<TRow>(filterRule).CountAsync();
     }
-
-    // private IQueryable<IEventRow> Queryable<T>(
-    //     FilterRule? filterRule,
-    //     IEnumerable<SortRule>? sortRules = null,
-    //     PagingRule? pagingRule = null)
-    //     where T : IEventEntityBase
-    // {
-    //     sortRules = sortRules?.ToArray();
-    //     var queryable = Queryable(Events, _eventRowFieldMap, MergeTypeFilterRule<T>(filterRule), sortRules, pagingRule);
-    //
-    //     if (typeof(T) == typeof(IEventEntityBase) || typeof(T) == typeof(Event<TData>))
-    //         queryable = queryable.Union(
-    //             Queryable(RecurrentEvents, _recurrentEventRowFieldMap, filterRule, sortRules, pagingRule));
-    //     
-    //     return queryable;
-    // }
 
     private IQueryable<TRow> Queryable<TRow>(
         FilterRule? filterRule,

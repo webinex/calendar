@@ -103,4 +103,9 @@ internal class Calendar<TData> : ICalendar<TData>
     {
         return await _occurrenceReadService.OccurrencesAsync(ids, tryCache);
     }
+
+    public async Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids)
+    {
+        return await _eventRepository.EventGroupAsync(ids);
+    }
 }

@@ -39,6 +39,8 @@ public interface ICalendar<TData>
         bool tryCache = false);
 
     Task<IReadOnlyCollection<Occurrence<TData>>> OccurrencesAsync(IEnumerable<string> ids, bool tryCache = false);
+
+    Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids);
 }
 
 public static class CalendarExtensions
@@ -149,5 +151,14 @@ public static class CalendarExtensions
         where TData : class, ICloneable
     {
         return await calendar.UpdateOccurrenceRangeAsync([args]);
+    }
+
+    public static async Task<EventGroup?> EventGroupAsync<TData>(
+        this ICalendar<TData> calendar,
+        Guid id)
+        where TData : class, ICloneable
+    {
+        var result = await calendar.EventGroupAsync([id]);
+        return result.FirstOrDefault();
     }
 }

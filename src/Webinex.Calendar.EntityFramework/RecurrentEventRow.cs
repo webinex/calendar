@@ -6,7 +6,7 @@ public class RecurrentEventRow<TData> : IEventRow
     where TData : class, ICloneable
 {
     public string Id { get; protected set; } = null!;
-    public EventGroup Group { get; protected set; } = null!;
+    public EventGroupId Group { get; protected set; } = null!;
     public OpenPeriod<DateTimeOffset> Effective { get; protected set; } = null!;
     public Period<DateTimeOffset> Period { get; protected set; } = null!;
     public string TimeZone { get; protected set; } = null!;
@@ -19,7 +19,7 @@ public class RecurrentEventRow<TData> : IEventRow
 
     public RecurrentEventRow(
         string id,
-        EventGroup group,
+        EventGroupId groupId,
         OpenPeriod<DateTimeOffset> effective,
         Period<DateTimeOffset> period,
         string timeZone,
@@ -27,7 +27,7 @@ public class RecurrentEventRow<TData> : IEventRow
         Recurrence recurrence)
     {
         Id = id;
-        Group = group.Clone();
+        Group = groupId.Clone();
         Effective = effective.Clone();
         Period = period.Clone();
         TimeZone = timeZone;

@@ -87,6 +87,13 @@ public interface IEventRepository<TData>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     Task<int> CountAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase;
+    
+    /// <summary>
+    ///     Returns <see cref="EventGroup"/> collection by <paramref name="ids"/>
+    /// </summary>
+    /// <param name="ids">Identifiers of groups</param>
+    /// <returns><see cref="EventGroup"/> collection</returns>
+    Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids);
 }
 
 public static class EventRepositoryExtensions

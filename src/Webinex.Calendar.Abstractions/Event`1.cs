@@ -5,7 +5,7 @@ public class Event<TData> : IEvent<TData> where TData : class, ICloneable
     public string Id { get; protected set; } = null!;
     public string TimeZone { get; protected set; } = null!;
     public Period<DateTimeOffset> Period { get; protected set; } = null!;
-    public EventGroup Group { get; protected set; } = null!;
+    public EventGroupId Group { get; protected set; } = null!;
     public TData Data { get; protected set; } = null!;
     public Recurrence? Recurrence { get; protected set; } = null;
 
@@ -17,20 +17,20 @@ public class Event<TData> : IEvent<TData> where TData : class, ICloneable
         string id,
         string timeZone,
         Period<DateTimeOffset> period,
-        EventGroup group,
+        EventGroupId groupId,
         TData data,
         Recurrence? recurrence = null)
     {
         Guard.NotNull(id).ASCII(id);
         Guard.NotNull(timeZone);
         Guard.NotNull(period);
-        Guard.NotNull(group);
+        Guard.NotNull(groupId);
         Guard.NotNull(data);
 
         Id = id;
         TimeZone = timeZone;
         Period = period.Clone();
-        Group = group.Clone();
+        Group = groupId.Clone();
         Data = (TData)data.Clone();
         Recurrence = recurrence?.Clone();
     }
@@ -41,10 +41,10 @@ public class Event<TData> : IEvent<TData> where TData : class, ICloneable
         TData data,
         Recurrence? recurrence = null,
         string? id = null,
-        EventGroup? group = null)
+        EventGroupId? group = null)
     {
         id ??= EventId.New(recurrence == null ? EventType.OneTime : EventType.Recurrent);
-        group ??= EventGroup.New();
+        group ??= EventGroupId.New();
 
         return new Event<TData>(id, timeZone, period, group, data, recurrence);
     }

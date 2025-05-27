@@ -1,38 +1,15 @@
 ﻿namespace Webinex.Calendar;
 
-public class EventGroup : Equatable
+public class EventGroup
 {
-    public Guid Id { get; protected init; }
-    public TimeSpan Offset { get; protected init; }
+    public Guid Id { get; }
+    public DateOnly Start { get; }
+    public DateOnly? End { get; }
 
-    public EventGroup(Guid id, TimeSpan offset)
+    public EventGroup(Guid id, DateOnly start, DateOnly? end)
     {
         Id = id;
-        Offset = offset;
-    }
-
-    public EventGroup(EventGroup value)
-    {
-        value = value ?? throw new ArgumentNullException(nameof(value));
-        Id = value.Id;
-        Offset = value.Offset;
-    }
-
-    protected EventGroup()
-    {
-    }
-
-    public EventGroup Clone() => new(this);
-
-    public static EventGroup New()
-    {
-        var id = Guid.NewGuid();
-        return new EventGroup(id, TimeSpan.Zero);
-    }
-    
-    protected override IEnumerable<object?> GetEqualityComponents()
-    {
-        yield return Id;
-        yield return Offset;
+        Start = start;
+        End = end;
     }
 }

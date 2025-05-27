@@ -12,7 +12,7 @@ public static class Event
         TData data,
         Recurrence? recurrence = null,
         string? id = null,
-        EventGroup? group = null)
+        EventGroupId? group = null)
         where TData : class, ICloneable
     {
         return Event<TData>.New(period, timeZone, data, recurrence, id, group);
