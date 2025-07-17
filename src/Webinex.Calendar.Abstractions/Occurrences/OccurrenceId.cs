@@ -19,7 +19,7 @@ public class OccurrenceId : Equatable
 
     public static OccurrenceId Parse(string value)
     {
-        value = value.Substring(1);
+        value = value.Substring(1).Replace('.', '/');
         var bytes = Convert.FromBase64String(value);
         var ticksBytes = bytes.TakeLast(8).ToArray();
         var eventIdBytes = bytes.Take(bytes.Length - 8).ToArray();
@@ -34,7 +34,7 @@ public class OccurrenceId : Equatable
         var ticksBytes = new byte[8];
         BitConverter.GetBytes(Start.UtcTicks).CopyTo(ticksBytes, 0);
         var bytes = Encoding.ASCII.GetBytes(EventId).Concat(ticksBytes).ToArray();
-        return "O" + Convert.ToBase64String(bytes);
+        return "O" + Convert.ToBase64String(bytes).Replace('/', '.');
     }
 
     public static bool IsValid(string id)
