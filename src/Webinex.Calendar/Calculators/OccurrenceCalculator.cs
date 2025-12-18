@@ -101,7 +101,7 @@ public class OccurrenceCalculator<TData>
         Event<TData> @event,
         Occurrence<TData>[] occurrences)
     {
-        foreach (var adjustment in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled))
+        foreach (var adjustment in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled && x.MoveTo != null))
         {
             if (occurrences.Any(x => x.Id == adjustment.Id))
                 continue;
