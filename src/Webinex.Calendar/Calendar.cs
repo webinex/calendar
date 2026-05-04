@@ -99,6 +99,14 @@ internal class Calendar<TData> : ICalendar<TData>
         return await _occurrenceReadService.OccurrencesAsync(period, dataFilterRule, tryCache);
     }
 
+    public async Task<IReadOnlyCollection<Occurrence<TData>>> MaterializedOccurrencesAsync(
+        FilterRule? filterRule = null,
+        IEnumerable<SortRule>? sortRules = null,
+        PagingRule? pagingRule = null)
+    {
+        return await _occurrenceReadService.MaterializedOccurrencesAsync(filterRule, sortRules, pagingRule);
+    }
+
     public async Task<IReadOnlyCollection<Occurrence<TData>>> OccurrencesAsync(IEnumerable<string> ids, bool tryCache = false)
     {
         return await _occurrenceReadService.OccurrencesAsync(ids, tryCache);

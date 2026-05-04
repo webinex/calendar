@@ -213,7 +213,7 @@ public class EventRepository<TData> : IEventRepository<TData>
             await RecurrentEvents.Where(x => missedRecurrentEventIds.Contains(x.Id)).ToArrayAsync();
         return recurrentEventRows.Concat(missedRecurrentEventRows).ToArray();
     }
-
+ 
     public virtual async Task<IReadOnlyCollection<T>> GetAllAsync<T>(
         FilterRule? filterRule = null,
         IEnumerable<SortRule>? sortRules = null,
@@ -239,6 +239,41 @@ public class EventRepository<TData> : IEventRepository<TData>
 
         return recurrentEventRowResult.Select(x => readOnly ? x.ToEvent() : Instance(x)).Concat(events).OfType<T>()
             .ToArray();
+    }
+
+    public async Task<IReadOnlyCollection<IEventEntityBase>> GetAllAsync(
+        EventEntityType type,
+        FilterRule? filterRule = null,
+        IEnumerable<SortRule>? sortRules = null,
+        PagingRule? pagingRule = null,
+        bool readOnly = false)
+    {
+        sortRules = sortRules?.ToArray();
+        var result = new List<IEventEntityBase>();
+        
+        if (type.HasFlag(EventEntityType.OneTimeEvent) || type.HasFlag(EventEntityType.OccurrenceAdjustment))
+        {
+            var eventRows = await Queryable<EventRow<TData>>(filterRule, sortRules, pagingRule, readOnly)
+                .ToArrayAsync();
+
+            var events = readOnly
+                ? eventRows.Select(x => x.ToEventEntity()).ToArray()
+                : eventRows.Select(Instance).ToArray();
+
+            result.AddRange(events);
+        }
+
+        if (type.HasFlag(EventEntityType.RecurrentEvent))
+        {
+            var recurrentEventRows =
+                await Queryable<RecurrentEventRow<TData>>(filterRule, sortRules, pagingRule, readOnly).ToArrayAsync();
+            var recurrentEvents = readOnly
+                ? recurrentEventRows.Select(x => x.ToEvent()).ToArray()
+                : recurrentEventRows.Select(Instance).ToArray();
+            result.AddRange(recurrentEvents);
+        }
+
+        return result.ToArray();
     }
 
     public virtual async Task<bool> AnyAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase

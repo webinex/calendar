@@ -38,6 +38,19 @@ public interface ICalendar<TData>
         FilterRule? dataFilterRule = null,
         bool tryCache = false);
 
+    /// <summary>
+    ///     Returns only materialized occurrences: one-time events and occurrences with modified state.
+    ///     Does not include generated occurrences for recurrent events.
+    /// </summary>
+    /// <param name="filterRule">Filtering criteria</param>
+    /// <param name="sortRules">Sorting criteria</param>
+    /// <param name="pagingRule">Paging criteria</param>
+    /// <returns>Collection of materialized occurrences.</returns>
+    Task<IReadOnlyCollection<Occurrence<TData>>> MaterializedOccurrencesAsync(
+        FilterRule? filterRule = null,
+        IEnumerable<SortRule>? sortRules = null,
+        PagingRule? pagingRule = null);
+
     Task<IReadOnlyCollection<Occurrence<TData>>> OccurrencesAsync(IEnumerable<string> ids, bool tryCache = false);
 
     Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids);

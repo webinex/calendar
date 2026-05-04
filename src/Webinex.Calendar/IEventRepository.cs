@@ -57,14 +57,14 @@ public interface IEventRepository<TData>
     /// <param name="period">Match period</param>
     /// <param name="dataFilterRule">Data match criteria</param>
     /// <returns>Matched entities</returns>
-    Task<IReadOnlyCollection<IEventEntityBase>> MatchAsync(Period<DateTimeOffset> period, FilterRule? dataFilterRule = null);
+    Task<IReadOnlyCollection<IEventEntityBase>> MatchAsync(
+        Period<DateTimeOffset> period,
+        FilterRule? dataFilterRule = null);
 
     /// <summary>
     ///     Returns <typeparamref name="T"/> matched specified search criteria
     /// </summary>
-    /// <param name="period"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
+    /// <typeparam name="T">Type of return value. One of: <see cref="IEventEntityBase"/> (all values), <see cref="Event{TData}"/> or <see cref="OccurrenceAdjustment{TData}"/></typeparam>
     Task<IReadOnlyCollection<T>> GetAllAsync<T>(
         FilterRule? filterRule = null,
         IEnumerable<SortRule>? sortRules = null,
@@ -73,21 +73,25 @@ public interface IEventRepository<TData>
         where T : IEventEntityBase;
 
     /// <summary>
+    ///     Returns <see cref="IEventEntityBase"/> matched specified search criteria
+    /// </summary>
+    Task<IReadOnlyCollection<IEventEntityBase>> GetAllAsync(
+        EventEntityType type,
+        FilterRule? filterRule = null,
+        IEnumerable<SortRule>? sortRules = null,
+        PagingRule? pagingRule = null,
+        bool readOnly = false);
+
+    /// <summary>
     ///     Returns <typeparamref name="T"/> matched specified search criteria
     /// </summary>
-    /// <param name="period"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
     Task<bool> AnyAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase;
 
     /// <summary>
     ///     Returns <typeparamref name="T"/> matched specified search criteria
     /// </summary>
-    /// <param name="period"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
     Task<int> CountAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase;
-    
+
     /// <summary>
     ///     Returns <see cref="EventGroup"/> collection by <paramref name="ids"/>
     /// </summary>
@@ -99,7 +103,8 @@ public interface IEventRepository<TData>
 public static class EventRepositoryExtensions
 {
     public static async Task<IReadOnlyCollection<Event<TData>>> EventAsync<TData>(
-        this IEventRepository<TData> repository, IEnumerable<string> ids)
+        this IEventRepository<TData> repository,
+        IEnumerable<string> ids)
         where TData : class, ICloneable
     {
         return await repository.ByIdAsync<Event<TData>>(ids);
@@ -115,7 +120,8 @@ public static class EventRepositoryExtensions
     }
 
     public static async Task<Event<TData>?> EventAsync<TData>(
-        this IEventRepository<TData> repository, string id)
+        this IEventRepository<TData> repository,
+        string id)
         where TData : class, ICloneable
     {
         var result = await repository.ByIdAsync<Event<TData>>([id]);
