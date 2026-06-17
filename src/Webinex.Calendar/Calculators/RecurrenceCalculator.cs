@@ -10,16 +10,60 @@ public static class RecurrenceCalculator
 {
     public static IEnumerable<Period<DateTimeOffset>> Occurrences(
         IEvent @event,
-        OpenPeriod<DateTimeOffset> @in)
+        OpenPeriod<DateTimeOffset> searchWindow)
+    {
+        if (@event.Recurrence == null)
+            throw new InvalidOperationException(
+                "Cannot calculate occurrences for a non-recurring event. Recurrence configuration is required.");
+
+        var searchWindowZoned = searchWindow.InZone(@event.TimeZone);
+        var minStartOfOccurrence = MinStartOfOccurrenceInSearchWindow(@event, searchWindowZoned);
+        var isSearchWindowOutOfStartOfOccurrences = searchWindowZoned.End.HasValue &&
+                                                    minStartOfOccurrence.CompareTo(searchWindowZoned.End.Value) >= 0;
+
+        if (isSearchWindowOutOfStartOfOccurrences)
+            return [];
+
+        var occurrences = GetICalOccurrenceEnumerable(@event, minStartOfOccurrence, searchWindowZoned.End);
+        return occurrences.Select(x => Map(@event, x)).Where(searchWindow.Intersects);
+    }
+
+    private static LocalDateTime MinStartOfOccurrenceInSearchWindow(
+        IEvent @event,
+        OpenPeriod<LocalDateTime> searchWindowZoned)
+    {
+        var recurrenceStartZoned = @event.Recurrence!.MGRecurrence!.Period.Start.ToLocalDateTime();
+        return LocalDateTime.Max(searchWindowZoned.Start, recurrenceStartZoned);
+    }
+
+    private static IEnumerable<Occurrence> GetICalOccurrenceEnumerable(
+        IEvent @event,
+        LocalDateTime start,
+        LocalDateTime? end)
+    {
+        var iCalEvent = MapToICalEvent(@event);
+
+        var calendar = new Ical.Net.Calendar();
+        calendar.Events.Add(iCalEvent);
+
+        return calendar.GetOccurrencesEnumerable(
+            start.ToDateTimeUnspecified(),
+            // We use .AddMilliseconds(-1) to avoid match events by inclusive end
+            // For Ical period of 18:00 - 19:00 will match with event which starts at 19:00
+            end?.ToDateTimeUnspecified().AddMilliseconds(-1));
+    }
+
+    private static CalendarEvent MapToICalEvent(IEvent @event)
     {
         var eventPeriodZoned = @event.Period.InZone(@event.TimeZone);
-        var inZoned = @in.InZone(@event.TimeZone);
-        var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified().AddDays(1) ??
+
+        var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified()
+                           .AddDays(1) ??
                        DateTime.MaxValue;
 
         var pattern = MGRecurrencePatternConverter.ConvertToIcal(@event.Recurrence!.MGRecurrence!.Pattern, endZoned);
 
-        var calendarEvent = new CalendarEvent
+        return new CalendarEvent
         {
             // We use UTC, because we want to remove all timezone manipulations from ICal.Net.
             // We only need to get times, so to do that we work with UTC timezone and then in Map convert to actual timezone
@@ -27,17 +71,6 @@ public static class RecurrenceCalculator
             End = new CalDateTime(eventPeriodZoned.End.ToDateTimeUnspecified(), "UTC"),
             RecurrenceRules = { pattern },
         };
-
-        var calendar = new Ical.Net.Calendar();
-        calendar.Events.Add(calendarEvent);
-
-        var occurrences = calendar.GetOccurrencesEnumerable(
-            inZoned.Start.ToDateTimeUnspecified(),
-            // We use .AddMilliseconds(-1) to avoid match events by inclusive end
-            // For Ical period of 18:00 - 19:00 will match with event which starts at 19:00
-            inZoned.End?.ToDateTimeUnspecified().AddMilliseconds(-1));
-
-        return occurrences.Select(x => Map(@event, x)).Where(x => @in.Intersects(x));
     }
 
     private static Period<DateTimeOffset> Map(IEvent @event, Occurrence x)

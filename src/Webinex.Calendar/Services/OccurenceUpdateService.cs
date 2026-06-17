@@ -1,4 +1,5 @@
 ﻿using Webinex.Calendar.Common;
+using Webinex.Calendar.Extensions;
 using Webinex.Coded;
 
 namespace Webinex.Calendar.Services;
@@ -57,13 +58,16 @@ internal class OccurrenceUpdateService<TData> : IOccurrenceUpdateService<TData>
 
     private async IAsyncEnumerable<Operation> MapUpdateOneTimeOccurrenceOperationsAsync(UpdateOccurrenceArgs<TData> arg)
     {
-        var @event = await _eventRepository.EventAsync(arg.Id.EventId)
-                     ?? throw CodedException.NotFound(arg.Id.EventId);
+        var @event = await _eventRepository.EventOrThrowAsync(arg.Id.EventId);
+
         if (arg.Data != null)
             @event.SetData(
                 arg.Data?.Value ??
                 throw new InvalidOperationException($"Unable to reset data for one time event {arg.Id}"));
-        if (arg.Period != null) @event.SetPeriod(arg.Period.Value);
+
+        if (arg.Period != null)
+            @event.SetPeriod(arg.Period.Value);
+
         yield return Operation.Update(@event);
     }
 

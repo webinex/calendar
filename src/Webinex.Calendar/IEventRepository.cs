@@ -1,5 +1,6 @@
 ﻿using Webinex.Asky;
 using Webinex.Calendar.Common;
+using Webinex.Coded;
 
 namespace Webinex.Calendar;
 
@@ -126,6 +127,14 @@ public static class EventRepositoryExtensions
     {
         var result = await repository.ByIdAsync<Event<TData>>([id]);
         return result.FirstOrDefault();
+    }
+
+    public static async Task<Event<TData>> EventOrThrowAsync<TData>(
+        this IEventRepository<TData> repository,
+        string id)
+        where TData : class, ICloneable
+    {
+        return await repository.EventAsync(id) ?? throw CodedException.NotFound(id);
     }
 
     public static async Task<IReadOnlyCollection<IEvent<TData>>> AddRangeAsync<TData>(

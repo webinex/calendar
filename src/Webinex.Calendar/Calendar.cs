@@ -1,5 +1,6 @@
 ﻿using Webinex.Asky;
 using Webinex.Calendar.Common;
+using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Services;
 
 namespace Webinex.Calendar;
@@ -38,6 +39,8 @@ internal class Calendar<TData> : ICalendar<TData>
     public async Task<IReadOnlyCollection<T>> AddRangeAsync<T>(IEnumerable<T> events)
         where T : IEvent<TData>
     {
+        events = events.ToArray();
+        foreach (var @event in events) @event.ValidateAtLeastOneOccurrenceOrThrow();
         var operations = events.Select(Operation.Add);
         var result = await _eventRepository.PatchAsync(operations);
         return result.Select(x => x.Value).Cast<T>().ToArray();

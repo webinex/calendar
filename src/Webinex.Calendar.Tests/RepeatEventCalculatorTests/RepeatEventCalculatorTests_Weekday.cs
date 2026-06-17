@@ -12,8 +12,12 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("6:01"))
-            .WithWeekdayMatch("6:00", "1:00", "UTC", Weekday.Sunday)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                "UTC",
+                null,
+                DayOfWeek.Sunday)
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
     }
 
     [Test]
@@ -21,8 +25,12 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("6:00:00.001"))
-            .WithWeekdayMatch("6:00", "1:00", "UTC", Weekday.Monday)
-            .ToBeEquivalent(Array.Empty<Period>());
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.AddDays(1).Add("6:00"), JAN1_2023_UTC.AddDays(1).Add("7:00")),
+                "UTC",
+                null,
+                DayOfWeek.Monday)
+            .ToBeEquivalent(Array.Empty<Period<DateTimeOffset>>());
     }
 
     [Test]
@@ -30,8 +38,12 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("7:00"), JAN1_2023_UTC.Add("7:01"))
-            .WithWeekdayMatch("6:00", "1:00", "UTC", Weekday.Sunday)
-            .ToBeEquivalent(Array.Empty<Period>());
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                "UTC",
+                null,
+                DayOfWeek.Sunday)
+            .ToBeEquivalent(Array.Empty<Period<DateTimeOffset>>());
     }
 
     [Test]
@@ -39,8 +51,12 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.AddDays(-1), JAN1_2023_UTC.Add("6:01"))
-            .WithWeekdayMatch("6:00", "1:00", "UTC", Weekday.Sunday)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                "UTC",
+                null,
+                DayOfWeek.Sunday)
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
     }
 
     [Test]
@@ -48,10 +64,14 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.AddDays(7).Add("6:01"))
-            .WithWeekdayMatch("6:00", "1:00", "UTC", Weekday.Sunday)
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                "UTC",
+                null,
+                DayOfWeek.Sunday)
             .ToBeEquivalent(
-                new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
-                new Period(JAN1_2023_UTC.AddDays(7).Add("6:00"), JAN1_2023_UTC.AddDays(7).Add("7:00")));
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                Period.New(JAN1_2023_UTC.AddDays(7).Add("6:00"), JAN1_2023_UTC.AddDays(7).Add("7:00")));
     }
 
     [Test]
@@ -59,8 +79,12 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC, JAN1_2023_UTC.Add("0:01"))
-            .WithWeekdayMatch("23:00", "1:01", "UTC", Weekday.Saturday)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.AddHours(-1), JAN1_2023_UTC.AddMinutes(1)));
+            .WithWeekly(
+                Period.New(JAN1_2023_UTC.AddHours(-1), JAN1_2023_UTC.AddMinutes(1)),
+                "UTC",
+                null,
+                DayOfWeek.Saturday)
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.AddHours(-1), JAN1_2023_UTC.AddMinutes(1)));
     }
 
     [Test]
@@ -68,16 +92,21 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2023-10-22T00:00:00+000"), DateTimeOffset.Parse("2023-11-05T02:30:00+000"))
-            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2023-10-22T00:30:00+000"),
-                null, Weekday.Sunday)
-            .ToBeEquivalent(
-                new Period(
+            .WithWeekly(
+                Period.New(
                     DateTimeOffset.Parse("2023-10-22T00:30:00+000"),
                     DateTimeOffset.Parse("2023-10-22T01:30:00+000")),
-                new Period(
+                "Europe/London",
+                1,
+                DayOfWeek.Sunday)
+            .ToBeEquivalent(
+                Period.New(
+                    DateTimeOffset.Parse("2023-10-22T00:30:00+000"),
+                    DateTimeOffset.Parse("2023-10-22T01:30:00+000")),
+                Period.New(
                     DateTimeOffset.Parse("2023-10-29T00:30:00+000"),
                     DateTimeOffset.Parse("2023-10-29T01:30:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-05T01:30:00+000"),
                     DateTimeOffset.Parse("2023-11-05T02:30:00+000")));
     }
@@ -87,16 +116,21 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2024-03-24T01:30:00+000"), DateTimeOffset.Parse("2024-04-07T02:30:00+000"))
-            .WithWeekdayMatch("01:30", "1:00", "Europe/London", 1, DateTimeOffset.Parse("2024-03-24T01:30:00+000"),
-                null, Weekday.Sunday)
-            .ToBeEquivalent(
-                new Period(
+            .WithWeekly(
+                Period.New(
                     DateTimeOffset.Parse("2024-03-24T01:30:00+000"),
                     DateTimeOffset.Parse("2024-03-24T02:30:00+000")),
-                new Period(
+                "Europe/London",
+                1,
+                DayOfWeek.Sunday)
+            .ToBeEquivalent(
+                Period.New(
+                    DateTimeOffset.Parse("2024-03-24T01:30:00+000"),
+                    DateTimeOffset.Parse("2024-03-24T02:30:00+000")),
+                Period.New(
                     DateTimeOffset.Parse("2024-03-31T01:30:00+000"),
                     DateTimeOffset.Parse("2024-03-31T02:30:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2024-04-07T00:30:00+000"),
                     DateTimeOffset.Parse("2024-04-07T01:30:00+000")));
     }
@@ -106,25 +140,30 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2023-11-06T00:00:00+000"), DateTimeOffset.Parse("2023-11-23T00:00:00+000"))
-            .WithWeekdayMatch("01:00", "1:00", "Europe/London", 2, DateTimeOffset.Parse("2023-11-06T01:00:00+000"),
-                null, Weekday.Monday, Weekday.Tuesday, Weekday.Wednesday)
-            .ToBeEquivalent(
-                new Period(
+            .WithWeekly(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-06T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-06T02:00:00+000")),
-                new Period(
+                "Europe/London",
+                2,
+                DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday)
+            .ToBeEquivalent(
+                Period.New(
+                    DateTimeOffset.Parse("2023-11-06T01:00:00+000"),
+                    DateTimeOffset.Parse("2023-11-06T02:00:00+000")),
+                Period.New(
                     DateTimeOffset.Parse("2023-11-07T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-07T02:00:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-08T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-08T02:00:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-20T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-20T02:00:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-21T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-21T02:00:00+000")),
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2023-11-22T01:00:00+000"),
                     DateTimeOffset.Parse("2023-11-22T02:00:00+000")));
     }
@@ -134,15 +173,16 @@ public class RepeatEventCalculatorTests_Weekday
     {
         new RepeatEventCalculatorScenario()
             .WithRange(DateTimeOffset.Parse("2024-08-23T00:00:00+000"), DateTimeOffset.Parse("2024-08-28T00:00:00+000"))
-            .WithWeekdayMatch(
-                timeOfTheDay: "00:00",
-                duration: "1:00",
-                tz: "Europe/London",
-                interval: 1,
-                effectiveStart: DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
-                effectiveEnd: DateTimeOffset.Parse("2024-08-26T00:00:00+000"), Weekday.Monday)
+            .WithWeekly(
+                Period.New(
+                    DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
+                    DateTimeOffset.Parse("2024-08-26T00:00:00+000")),
+                "Europe/London",
+                1,
+                DateOnly.Parse("2024-08-26"),
+                DayOfWeek.Monday)
             .ToBeEquivalent(
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
                     DateTimeOffset.Parse("2024-08-26T00:00:00+000")));
     }

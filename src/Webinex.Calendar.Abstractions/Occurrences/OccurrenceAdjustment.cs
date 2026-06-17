@@ -61,10 +61,14 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
     {
     }
 
+    /// <summary>
+    ///     Search window where adjustment may take effect.
+    /// </summary>
+    /// <returns>Adjustment effective period</returns>
     public Period<DateTimeOffset> Effective()
     {
-        var start = MoveTo?.Start < Period.Start ? MoveTo.Start : Period.Start;
-        var end = MoveTo?.End > Period.End ? MoveTo.End : Period.End;
+        var start = MoveTo != null ? DateTimeOffsetUtil.Min(MoveTo.Start, Period.Start) : Period.Start;
+        var end = MoveTo != null ? DateTimeOffsetUtil.Max(MoveTo.End, Period.End) : Period.End;
         return new Period<DateTimeOffset>(start, end);
     }
 
