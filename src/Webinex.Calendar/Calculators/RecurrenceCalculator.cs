@@ -56,10 +56,9 @@ public static class RecurrenceCalculator
     private static CalendarEvent MapToICalEvent(IEvent @event)
     {
         var eventPeriodZoned = @event.Period.InZone(@event.TimeZone);
-
-        var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified()
-                           .AddDays(1) ??
-                       DateTime.MaxValue;
+        var eventRecurrencePeriodEndZoned =
+            @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified();
+        var endZoned = eventRecurrencePeriodEndZoned?.AddDays(1) ?? CalendarConstants.MAX_DATE_TIME.AddDays(1);
 
         var pattern = MGRecurrencePatternConverter.ConvertToIcal(@event.Recurrence!.MGRecurrence!.Pattern, endZoned);
 

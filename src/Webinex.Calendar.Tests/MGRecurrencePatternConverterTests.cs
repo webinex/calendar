@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using FluentAssertions;
 using Ical.Net;
-using Ical.Net.DataTypes;
 using NUnit.Framework;
 using Webinex.Calendar.Calculators;
 using Webinex.Calendar.MicrosoftGraph;
@@ -21,7 +20,7 @@ public class MGRecurrencePatternConverterTests
             interval: 3,
             firstDayOfWeek: DayOfWeek.Sunday);
 
-        var result = MGRecurrencePatternConverter.ConvertToIcal(pattern, DateTime.MaxValue);
+        var result = MGRecurrencePatternConverter.ConvertToIcal(pattern, CalendarConstants.MAX_DATE_TIME.AddDays(1));
 
         result.Frequency.Should().Be(FrequencyType.Yearly);
         result.Interval.Should().Be(3);
@@ -36,7 +35,7 @@ public class MGRecurrencePatternConverterTests
     {
         var result = MGRecurrencePatternConverter.ConvertToIcal(
             MGRecurrencePattern.AbsoluteMonthly(dayOfMonth: 25, interval: 2),
-            DateTime.MaxValue);
+            CalendarConstants.MAX_DATE_TIME.AddDays(1));
 
         result.Frequency.Should().Be(FrequencyType.Monthly);
         result.Interval.Should().Be(2);

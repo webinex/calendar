@@ -59,11 +59,11 @@ internal class OccurrenceCancellationService<TData> : IOccurrenceCancellationSer
      */
     private Operation MapEndUntilOccurenceRecurrenceEventOperation(Event<TData> @event, OccurrenceId id)
     {
-        var endDateNew = id.Start.ToDateOnly(@event.TimeZone).AddDays(-1);
-        
-        if (endDateNew < @event.Recurrence!.StartDate())
+        if (@event.Effective().Start == id.Start)
             return Operation.Remove(@event);
         
+        var endDateNew = id.Start.ToDateOnly(@event.TimeZone).AddDays(-1);
+
         @event.SetEndDate(endDateNew);
         return Operation.Update(@event);
     }

@@ -311,11 +311,11 @@ public class EventRepository<TData> : IEventRepository<TData>
             {
                 Id = x.Key,
                 Start = x.Min(e => e.Recurrence.MGRecurrence!.Period.Start),
-                End = x.Max(e => e.Recurrence.MGRecurrence!.Period.End ?? DateOnly.MaxValue),
+                End = x.Max(e => e.Recurrence.MGRecurrence!.Period.End ?? DateOnly.MinValue),
             })
             .ToArrayAsync();
 
-        return result.Select(x => new EventGroup(x.Id, x.Start, x.End)).ToArray();
+        return result.Select(x => new EventGroup(x.Id, x.Start, x.End == DateOnly.MinValue ? null : x.End)).ToArray();
     }
 
     private async Task<int> CountInternalAsync<TRow>(FilterRule? filterRule) where TRow : class, IEventRow

@@ -91,7 +91,10 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
     public void Move(Period<DateTimeOffset> period)
     {
         if (Period == period)
+        {
+            MoveTo = null;
             return;
+        }
 
         MoveTo = period;
     }

@@ -37,6 +37,42 @@ public static class ArgExtensions
 
         return arg;
     }
+
+    public static Arg<T> Lt<T>(this Arg<T> arg, T maxValue)
+        where T : IComparable<T>
+    {
+        if (arg.Value.CompareTo(maxValue) >= 0)
+            throw arg.Throw($"Might be less than {maxValue}");
+
+        return arg;
+    }
+
+    public static Arg<T?> Lt<T>(this Arg<T?> arg, T maxValue)
+        where T : struct, IComparable<T>
+    {
+        if (arg.Value.HasValue && arg.Value.Value.CompareTo(maxValue) >= 0)
+            throw arg.Throw($"Might be less than {maxValue}");
+
+        return arg;
+    }
+
+    public static Arg<T> Gt<T>(this Arg<T> arg, T maxValue)
+        where T : IComparable<T>
+    {
+        if (arg.Value.CompareTo(maxValue) <= 0)
+            throw arg.Throw($"Might be greater than {maxValue}");
+
+        return arg;
+    }
+
+    public static Arg<T?> Gt<T>(this Arg<T?> arg, T maxValue)
+        where T : struct, IComparable<T>
+    {
+        if (arg.Value.HasValue && arg.Value.Value.CompareTo(maxValue) <= 0)
+            throw arg.Throw($"Might be greater than {maxValue}");
+
+        return arg;
+    }
 }
 
 internal class GuardChain
@@ -199,7 +235,7 @@ internal static class Guard
         where T : struct, IComparable<T>
         => new GuardChain().Gte(value, than, name);
 
-    public static GuardChain Lte<T>(T? value, T than, [CallerArgumentExpression("value")] string name = "")
+    public static GuardChain Lt<T>(T? value, T than, [CallerArgumentExpression("value")] string name = "")
         where T : struct, IComparable<T>
         => new GuardChain().Lte(value, than, name);
 

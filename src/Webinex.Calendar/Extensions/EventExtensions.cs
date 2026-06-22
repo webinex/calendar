@@ -119,7 +119,7 @@ public static class EventExtensions
     ///     Returns the actual end of the last occurrence for finite recurrent events.
     /// </summary>
     [Pure]
-    private static DateTimeOffset? EndOfLastOccurrence(this IEvent @event)
+    public static DateTimeOffset? EndOfLastOccurrence(this IEvent @event)
     {
         if (@event.Recurrence == null)
             return @event.Period.End;

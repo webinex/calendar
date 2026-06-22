@@ -26,6 +26,8 @@ public class Event<TData> : IEvent<TData> where TData : class, ICloneable
         Guard.NotNull(period);
         Guard.NotNull(groupId);
         Guard.NotNull(data);
+        Guard.Arg(period.Start).Lt(CalendarConstants.MAX_DATE_TIME_OFFSET);
+        Guard.Arg(period.End).Lt(CalendarConstants.MAX_DATE_TIME_OFFSET);
 
         Id = id;
         TimeZone = timeZone;

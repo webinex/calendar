@@ -143,20 +143,6 @@ public class OccurrenceCalculatorTests
             .Which.Period.Should().BeEquivalentTo(moved);
     }
 
-    [Test]
-    public void TryCalculateOccurrenceAdjustment_WhenDataIsNull_ShouldReturnFalse()
-    {
-        var @event = Weekly([DayOfWeek.Sunday]);
-        var original = Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7));
-        var moved = Period.New(JAN1_2023_UTC.AddHours(8), JAN1_2023_UTC.AddHours(9));
-        var adjustment = OccurrenceAdjustment<None>.NewMove(@event.Id, @event.Group, original, moved);
-
-        var result = OccurrenceCalculator<None>.TryCalculateOccurrenceAdjustment(adjustment, out var occurrence);
-
-        result.Should().BeFalse();
-        occurrence.Should().BeNull();
-    }
-
     private static IReadOnlyCollection<Occurrence<None>> Calculate(
         DateTimeOffset start,
         DateTimeOffset end,

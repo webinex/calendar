@@ -2,6 +2,7 @@ using System;
 using FluentAssertions;
 using NUnit.Framework;
 using Webinex.Calendar.Extensions;
+using Webinex.Coded;
 
 namespace Webinex.Calendar.Tests;
 
@@ -52,6 +53,46 @@ public class EventExtensionsTests
     }
 
     [Test]
+    public void EndOfLastOccurrence_WhenOneTimeEvent_ShouldReturnEventPeriodEnd()
+    {
+        var period = Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7));
+        var @event = Event.New(period, TimeZoneInfo.Utc.Id, new None());
+
+        var result = @event.EndOfLastOccurrence();
+
+        result.Should().Be(period.End);
+    }
+
+    [Test]
+    public void EndOfLastOccurrence_WhenEndlessRecurrentEvent_ShouldReturnNull()
+    {
+        var @event = Event.Factory.MGWeekly(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7)),
+            TimeZoneInfo.Utc.Id,
+            new None(),
+            [DayOfWeek.Sunday]);
+
+        var result = @event.EndOfLastOccurrence();
+
+        result.Should().BeNull();
+    }
+
+    [Test]
+    public void EndOfLastOccurrence_WhenRecurrentEventHasEndDate_ShouldReturnLastOccurrenceEnd()
+    {
+        var @event = Event.Factory.MGWeekly(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7)),
+            TimeZoneInfo.Utc.Id,
+            new None(),
+            [DayOfWeek.Sunday],
+            until: DateOnly.FromDateTime(JAN1_2023_UTC.AddDays(7).DateTime));
+
+        var result = @event.EndOfLastOccurrence();
+
+        result.Should().Be(JAN1_2023_UTC.AddDays(7).AddHours(7));
+    }
+
+    [Test]
     public void Effective_WhenRecurrencePeriodStartIsAfterEventPeriodStart_ShouldUseFirstOccurrenceStart()
     {
         var @event = Event.Factory.MGWeekly(
@@ -84,9 +125,10 @@ public class EventExtensionsTests
 
         var act = () => @event.Effective();
 
-        act.Should()
-            .Throw<InvalidOperationException>()
-            .WithMessage($"Recurrent event {@event.Id} does not have any occurrences");
+        var ex = act.Should()
+            .Throw<CodedException>();
+
+        ex.Which.Failure.Code.Should().Be(CalendarCodes.NO_OCCURRENCE);
     }
 
     [Test]
@@ -130,9 +172,10 @@ public class EventExtensionsTests
 
         var act = () => @event.ValidateAtLeastOneOccurrenceOrThrow();
 
-        act.Should()
-            .Throw<InvalidOperationException>()
-            .WithMessage($"Recurrent event {@event.Id} does not have any occurrences");
+        var ex = act.Should()
+            .Throw<CodedException>();
+
+        ex.Which.Failure.Code.Should().Be(CalendarCodes.NO_OCCURRENCE);
     }
 
     [Test]

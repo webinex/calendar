@@ -10,10 +10,12 @@ public class MGRecurrencePeriod : OpenPeriod<DateOnly>
     public MGRecurrencePeriod(
         DateOnly start,
         DateOnly? end,
-        int? numberOfOccurrences = null) 
-        : base(start, end)
+        int? numberOfOccurrences = null)
+        : base(
+            Guard.Arg(start).Lt(CalendarConstants.MAX_DATE_ONLY).Value,
+            Guard.Arg(end).Lt(CalendarConstants.MAX_DATE_ONLY).Value)
     {
-        NumberOfOccurrences = numberOfOccurrences;
+        NumberOfOccurrences = Guard.Arg(numberOfOccurrences).Gt(0).Value;
     }
 
     internal MGRecurrencePeriod(MGRecurrencePeriod value)
@@ -37,7 +39,7 @@ public class MGRecurrencePeriod : OpenPeriod<DateOnly>
     {
         return new MGRecurrencePeriod(this)
         {
-            End = value,
+            End = Guard.Arg(value).Lt(CalendarConstants.MAX_DATE_ONLY).Value,
         };
     }
 
@@ -45,7 +47,7 @@ public class MGRecurrencePeriod : OpenPeriod<DateOnly>
     {
         return new MGRecurrencePeriod(this)
         {
-            Start = value,
+            Start = Guard.Arg(value).Lt(CalendarConstants.MAX_DATE_ONLY).Value,
         };
     }
 
