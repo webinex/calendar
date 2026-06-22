@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-
 using Webinex.Calendar.Common;
+
 namespace Webinex.Calendar.Calculators;
 
 public class OccurrenceCalculator<TData>
@@ -50,7 +50,7 @@ public class OccurrenceCalculator<TData>
     public static Occurrence<TData> CalculateOneTime(Event<TData> @event)
     {
         var occurrenceId = new OccurrenceId(@event.Id, @event.Period.Start).ToString();
-        return new Occurrence<TData>(occurrenceId, @event.Group, @event.Period, @event.Data);
+        return new Occurrence<TData>(occurrenceId, @event.TimeZone, @event.Group, @event.Period, @event.Data);
     }
 
     public static Occurrence<TData> CalculateRecurrent(
@@ -65,21 +65,16 @@ public class OccurrenceCalculator<TData>
             .First();
     }
 
-    public static bool TryCalculateOccurrenceAdjustment(
-        OccurrenceAdjustment<TData> adjustment,
-        [NotNullWhen(true)] out Occurrence<TData>? occurrence)
+    public static Occurrence<TData> CalculateOccurrenceAdjustment(
+        Event<TData> @event,
+        OccurrenceAdjustment<TData> adjustment)
     {
-        occurrence = null;
-        if (adjustment.Data == null)
-            return false;
-
-        occurrence = new Occurrence<TData>(
+        return new Occurrence<TData>(
             adjustment.Id,
+            @event.TimeZone,
             adjustment.Group,
             adjustment.MoveTo ?? adjustment.Period,
-            adjustment.Data);
-
-        return true;
+            adjustment.Data ?? @event.Data);
     }
 
     private IEnumerable<Occurrence<TData>> CalculateRecurrent(Event<TData> @event)
@@ -107,6 +102,7 @@ public class OccurrenceCalculator<TData>
 
             yield return new Occurrence<TData>(
                 id.ToString(),
+                @event.TimeZone,
                 @event.Group,
                 period,
                 adjustment?.Data ?? @event.Data);
@@ -128,6 +124,7 @@ public class OccurrenceCalculator<TData>
         {
             yield return new Occurrence<TData>(
                 adjustment.Id,
+                @event.TimeZone,
                 @event.Group,
                 adjustment.MoveTo!,
                 adjustment.Data ?? @event.Data);

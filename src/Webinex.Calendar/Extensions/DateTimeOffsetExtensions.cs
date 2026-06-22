@@ -1,4 +1,5 @@
-﻿using NodaTime;
+﻿using Ical.Net.DataTypes;
+using NodaTime;
 using NodaTime.Extensions;
 
 namespace Webinex.Calendar.Extensions;
@@ -19,5 +20,11 @@ public static class DateTimeOffsetExtensions
     {
         var tz = DateTimeZoneProviders.Tzdb[timeZone];
         return value.ToInstant().InZone(tz).LocalDateTime;
+    }
+
+    public static CalDateTime ToCalDateTime(this DateTimeOffset value, string timeZone)
+    {
+        var localDateTime = value.ToLocalDateTime(timeZone);
+        return new CalDateTime(localDateTime.Year, localDateTime.Month, localDateTime.Day, localDateTime.Hour, localDateTime.Minute, localDateTime.Second, timeZone);
     }
 }
