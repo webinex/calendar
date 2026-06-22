@@ -115,6 +115,11 @@ internal class Calendar<TData> : ICalendar<TData>
         return await _occurrenceReadService.OccurrencesAsync(ids, tryCache);
     }
 
+    public async Task<ILookup<string, Occurrence<TData>>> OccurrencesByEventAsync(OccurrencesByEventQueryArgs args)
+    {
+        return await _occurrenceReadService.OccurrencesByEventAsync(args);
+    }
+
     public async Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids)
     {
         return await _eventRepository.EventGroupAsync(ids);

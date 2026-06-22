@@ -16,4 +16,8 @@
       <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="Webinex.Calendar.EntityFramework.csproj.DotSettings" />
+    </ItemGroup>
+
 </Project>

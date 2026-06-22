@@ -53,6 +53,8 @@ public interface ICalendar<TData>
 
     Task<IReadOnlyCollection<Occurrence<TData>>> OccurrencesAsync(IEnumerable<string> ids, bool tryCache = false);
 
+    Task<ILookup<string, Occurrence<TData>>> OccurrencesByEventAsync(OccurrencesByEventQueryArgs args);
+
     Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids);
 }
 
@@ -173,5 +175,20 @@ public static class CalendarExtensions
     {
         var result = await calendar.EventGroupAsync([id]);
         return result.FirstOrDefault();
+    }
+
+    public static async Task<Occurrence<TData>?> FirstOrDefaultOccurrenceByEventAsync<TData>(
+        this ICalendar<TData> calendar,
+        IEnumerable<string> eventIds,
+        bool isRespectAdjustments = false)
+        where TData : class, ICloneable
+    {
+        eventIds = eventIds.Distinct().ToArray();
+        if (!eventIds.Any()) return null;
+        
+        var result = await calendar.OccurrencesByEventAsync(
+            new OccurrencesByEventQueryArgs(eventIds, count: 1, isRespectAdjustments: isRespectAdjustments));
+        
+        return result.SelectMany(x => x).MinBy(x => x.Period.Start);
     }
 }

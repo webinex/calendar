@@ -1,16 +1,17 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
+using Webinex.Calendar.Common;
 namespace Webinex.Calendar.Calculators;
 
 public class OccurrenceCalculator<TData>
     where TData : class, ICloneable
 {
-    private readonly Period<DateTimeOffset> _period;
+    private readonly OpenPeriod<DateTimeOffset> _period;
     private readonly IReadOnlyCollection<Event<TData>> _events;
     private readonly IReadOnlyCollection<Event<TData>> _recurrentEvents;
     private readonly IReadOnlyCollection<OccurrenceAdjustment<TData>> _adjustments;
 
-    public OccurrenceCalculator(Period<DateTimeOffset> period, IReadOnlyCollection<IEventEntityBase> entries)
+    public OccurrenceCalculator(OpenPeriod<DateTimeOffset> period, IReadOnlyCollection<IEventEntityBase> entries)
     {
         _period = period.ToUtc();
         _events = entries.OfType<Event<TData>>().Where(x => x.Recurrence == null).ToArray();
@@ -18,12 +19,24 @@ public class OccurrenceCalculator<TData>
         _adjustments = entries.OfType<OccurrenceAdjustment<TData>>().ToArray();
     }
 
+    public OccurrenceCalculator(Period<DateTimeOffset> period, IReadOnlyCollection<IEventEntityBase> entries)
+        : this(period.ToOpenPeriod(), entries)
+    {
+    }
+
     public IReadOnlyCollection<Occurrence<TData>> Calculate()
     {
-        return _events.Select(CalculateOneTime)
-            .Concat(_recurrentEvents.SelectMany(CalculateRecurrent))
+        return CalculateEnumerable()
             .OrderBy(x => x.Period.Start)
             .ToArray();
+    }
+
+    public IEnumerable<Occurrence<TData>> CalculateEnumerable()
+    {
+        return EnumerableUtil.MergeOrdered(
+            _events.Select(x => new[] { CalculateOneTime(x) })
+                .Concat(_recurrentEvents.Select(CalculateRecurrent)),
+            x => x.Period.Start);
     }
 
     public static Occurrence<TData> Calculate(
@@ -46,7 +59,9 @@ public class OccurrenceCalculator<TData>
         OccurrenceAdjustment<TData>? adjustment)
     {
         IEventEntityBase[] entities = adjustment == null ? [@event] : [@event, adjustment];
-        return new OccurrenceCalculator<TData>(Period.New(id.Start, id.Start.AddMinutes(1)), entities).Calculate()
+        return new OccurrenceCalculator<TData>(
+                new OpenPeriod<DateTimeOffset>(id.Start, id.Start.AddMinutes(1)),
+                entities).Calculate()
             .First();
     }
 
@@ -69,13 +84,17 @@ public class OccurrenceCalculator<TData>
 
     private IEnumerable<Occurrence<TData>> CalculateRecurrent(Event<TData> @event)
     {
-        var occurrences = CalculateRecurrentEventOccurrences(@event).ToArray();
-        return occurrences.Concat(CalculateMovedIntoPeriod(@event, occurrences));
+        return EnumerableUtil.MergeOrdered(
+            [
+                CalculateRecurrentEventOccurrences(@event),
+                CalculateMovedIntoPeriod(@event),
+            ],
+            x => x.Period.Start);
     }
 
     private IEnumerable<Occurrence<TData>> CalculateRecurrentEventOccurrences(Event<TData> @event)
     {
-        foreach (var period in RecurrenceCalculator.Occurrences(@event, _period.ToOpenPeriod()))
+        foreach (var period in RecurrenceCalculator.Occurrences(@event, _period))
         {
             var id = new OccurrenceId(@event.Id, period.Start);
             var adjustment = _adjustments.FirstOrDefault(x => x.Id == id.ToString());
@@ -83,10 +102,13 @@ public class OccurrenceCalculator<TData>
             if (adjustment?.Cancelled == true)
                 continue;
 
+            if (adjustment?.MoveTo != null)
+                continue;
+
             yield return new Occurrence<TData>(
                 id.ToString(),
                 @event.Group,
-                adjustment?.MoveTo ?? period,
+                period,
                 adjustment?.Data ?? @event.Data);
         }
     }
@@ -97,15 +119,13 @@ public class OccurrenceCalculator<TData>
      * it works directly with event and doesn't know that some of the occurrences moved into period.
      * In this method we return such missed occurrences
      */
-    private IEnumerable<Occurrence<TData>> CalculateMovedIntoPeriod(
-        Event<TData> @event,
-        Occurrence<TData>[] occurrences)
+    private IEnumerable<Occurrence<TData>> CalculateMovedIntoPeriod(Event<TData> @event)
     {
-        foreach (var adjustment in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled))
+        foreach (var adjustment in _adjustments
+                     .Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled && x.MoveTo != null)
+                     .Where(x => _period.Intersects(x.MoveTo!))
+                     .OrderBy(x => x.MoveTo!.Start))
         {
-            if (occurrences.Any(x => x.Id == adjustment.Id))
-                continue;
-
             yield return new Occurrence<TData>(
                 adjustment.Id,
                 @event.Group,

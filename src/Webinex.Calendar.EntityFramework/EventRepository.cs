@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Webinex.Asky;
 using Webinex.Calendar.Common;
 using Webinex.Coded;
@@ -12,7 +11,7 @@ public class EventRepository<TData> : IEventRepository<TData>
     private readonly ICalendarDbContextProvider<TData> _dbContextProvider;
     private readonly IAskyFieldMap<EventRow<TData>> _eventRowFieldMap;
     private readonly IAskyFieldMap<RecurrentEventRow<TData>> _recurrentEventRowFieldMap;
-    private readonly ConcurrentDictionary<string, IEventEntityBase> _identityMap = new();
+    private readonly EventIdentityMap _identityMap = new();
 
     public EventRepository(
         ICalendarDbContextProvider<TData> dbContextProvider,
@@ -31,7 +30,7 @@ public class EventRepository<TData> : IEventRepository<TData>
     public virtual async Task<IReadOnlyCollection<T>> ByIdAsync<T>(IEnumerable<string> ids) where T : IEventEntityBase
     {
         var rows = await FindRowsAsync(ids);
-        return rows.Select(Entity).OfType<T>().ToArray();
+        return rows.Select(_identityMap.GetOrAdd).OfType<T>().ToArray();
     }
 
     private async Task<IReadOnlyCollection<IEventRow>> FindRowsAsync(IEnumerable<string> ids)
@@ -40,8 +39,8 @@ public class EventRepository<TData> : IEventRepository<TData>
         var eventRowIds = ids.Where(EventId.IsOneTime).Concat(ids.Where(OccurrenceId.IsValid)).ToArray();
         var recurrentEventRowIds = ids.Where(EventId.IsRecurrent).ToList();
 
-        var eventRows = await FindConcreteRowsAsync<EventRow<TData>>(eventRowIds);
-        var recurrentEventRows = await FindConcreteRowsAsync<RecurrentEventRow<TData>>(recurrentEventRowIds);
+        var eventRows = await Events.FindManyAsync(eventRowIds);
+        var recurrentEventRows = await RecurrentEvents.FindManyAsync(recurrentEventRowIds);
         return eventRows.Cast<IEventRow>().Concat(recurrentEventRows).ToArray();
     }
 
@@ -51,40 +50,11 @@ public class EventRepository<TData> : IEventRepository<TData>
         return result.FirstOrDefault();
     }
 
-    private async Task<IReadOnlyCollection<T>> FindConcreteRowsAsync<T>(IEnumerable<string> ids)
-        where T : class, IEventRow
-    {
-        if (typeof(T) == typeof(IEventRow))
-            throw new InvalidOperationException($"Might be concrete row type, not a {nameof(IEventRow)} type");
-
-        ids = ids.Distinct().ToArray();
-        if (!ids.Any())
-            return [];
-
-        var local = DbContext.Set<T>().Local.Where(x => ids.Contains(x.Id)).ToArray();
-        var idSurplus = ids.Except(local.Select(x => x.Id)).ToArray();
-        if (idSurplus.Length == 0)
-            return local;
-
-        var db = await DbContext.Set<T>().Where(x => ((IEnumerable<string>)idSurplus).Contains(x.Id)).ToArrayAsync();
-        return local.Concat(db).ToArray();
-    }
-
-    private IEventEntityBase Entity(IEventRow row)
-    {
-        if (_identityMap.TryGetValue(row.Id, out var result))
-            return result;
-
-        result = row.ToEventEntity();
-        _identityMap[row.Id] = result;
-        return result;
-    }
-
     public virtual async Task<IReadOnlyDictionary<Operation, IEventEntityBase>> PatchAsync(
         IEnumerable<Operation> operations)
     {
         operations = operations?.ToArray() ?? throw new ArgumentNullException(nameof(operations));
-        
+
         // preload all rows to DbContext cache
         await FindRowsAsync(operations
             .Where(x => x.Type is OperationType.Update or OperationType.Remove).Select(x => x.Value.Id));
@@ -95,8 +65,8 @@ public class EventRepository<TData> : IEventRepository<TData>
             {
                 case OperationType.Add:
                 {
-                    var row = NewRow(operation.Value);
-                    _identityMap[row.Id] = operation.Value;
+                    var row = EventUtil.ToRow<TData>(operation.Value);
+                    _identityMap.Add(row, operation.Value);
                     Add(row);
                     break;
                 }
@@ -106,16 +76,16 @@ public class EventRepository<TData> : IEventRepository<TData>
                     var row = await FindRowAsync(operation.Value.Id)
                               ?? throw CodedException.NotFound(operation.Value.Id);
                     row.Apply(operation.Value);
-                    _identityMap[operation.Value.Id] = operation.Value;
+                    _identityMap.TryAdd(row, operation.Value);
                     break;
                 }
 
                 case OperationType.Remove:
                 {
                     var row = await FindRowAsync(operation.Value.Id)
-                        ?? throw CodedException.NotFound(operation.Value.Id);
+                              ?? throw CodedException.NotFound(operation.Value.Id);
                     Remove(row);
-                    _identityMap.TryRemove(operation.Value.Id, out _);
+                    _identityMap.TryRemove(operation.Value);
                     break;
                 }
 
@@ -138,6 +108,7 @@ public class EventRepository<TData> : IEventRepository<TData>
             case RecurrentEventRow<TData> recurrentEventRow:
                 RecurrentEvents.Add(recurrentEventRow);
                 break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(row), $"Unexpected type {row.GetType().FullName}");
         }
@@ -159,15 +130,6 @@ public class EventRepository<TData> : IEventRepository<TData>
         }
     }
 
-    private IEventRow NewRow(IEventEntityBase eventEntity)
-    {
-        return eventEntity switch
-        {
-            Event<TData> @event when @event.Recurrence != null => RecurrentEventRow<TData>.From(@event),
-            _ => EventRow<TData>.From(eventEntity),
-        };
-    }
-
     public async Task<IReadOnlyCollection<IEventEntityBase>> MatchAsync(
         Period<DateTimeOffset> period,
         FilterRule? dataFilterRule = null)
@@ -177,7 +139,7 @@ public class EventRepository<TData> : IEventRepository<TData>
         var recurrentEventRows = await MatchRecurrentEventRowsAsync(period, dataFilterRule);
         var eventRows = await MatchEventRowsAsync(period, dataFilterRule, recurrentEventRows);
         recurrentEventRows = await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows);
-        return eventRows.Cast<IEventRow>().Concat(recurrentEventRows).Select(Entity).ToArray();
+        return eventRows.Cast<IEventRow>().Concat(recurrentEventRows).Select(_identityMap.GetOrAdd).ToArray();
     }
 
     private async Task<IReadOnlyCollection<RecurrentEventRow<TData>>> MatchRecurrentEventRowsAsync(
@@ -242,12 +204,12 @@ public class EventRepository<TData> : IEventRepository<TData>
         sortRules = sortRules?.ToArray();
 
         var eventRowResult =
-            await Queryable<EventRow<TData>>(MergeTypeFilterRule<T>(filterRule), sortRules, pagingRule, readOnly)
+            await Queryable<EventRow<TData>>(WithTypeFilterRule<T>(filterRule), sortRules, pagingRule, readOnly)
                 .ToArrayAsync();
 
         var events = readOnly
             ? eventRowResult.Select(x => x.ToEventEntity()).ToArray()
-            : eventRowResult.Select(Entity).ToArray();
+            : eventRowResult.Select(_identityMap.GetOrAdd).ToArray();
 
         if (!CanBeRecurrentEvent<T>())
             return events.OfType<T>().ToArray();
@@ -258,7 +220,7 @@ public class EventRepository<TData> : IEventRepository<TData>
 
         var recurrentEvents = readOnly
             ? recurrentEventRowResult.Select(x => x.ToEvent()).ToArray()
-            : recurrentEventRowResult.Select(Entity).ToArray();
+            : recurrentEventRowResult.Select(_identityMap.GetOrAdd).ToArray();
 
         return recurrentEvents.Concat(events).OfType<T>()
             .ToArray();
@@ -276,12 +238,13 @@ public class EventRepository<TData> : IEventRepository<TData>
 
         if (type.HasFlag(EventEntityType.OneTimeEvent) || type.HasFlag(EventEntityType.OccurrenceAdjustment))
         {
-            var eventRows = await Queryable<EventRow<TData>>(filterRule, sortRules, pagingRule, readOnly)
+            var eventRowFilterRule = MergeEventEntityTypeFilterRule(type, filterRule);
+            var eventRows = await Queryable<EventRow<TData>>(eventRowFilterRule, sortRules, pagingRule, readOnly)
                 .ToArrayAsync();
 
             var events = readOnly
                 ? eventRows.Select(x => x.ToEventEntity()).ToArray()
-                : eventRows.Select(Entity).ToArray();
+                : eventRows.Select(_identityMap.GetOrAdd).ToArray();
 
             result.AddRange(events);
         }
@@ -292,23 +255,45 @@ public class EventRepository<TData> : IEventRepository<TData>
                 await Queryable<RecurrentEventRow<TData>>(filterRule, sortRules, pagingRule, readOnly).ToArrayAsync();
             var recurrentEvents = readOnly
                 ? recurrentEventRows.Select(x => x.ToEvent()).ToArray()
-                : recurrentEventRows.Select(Entity).ToArray();
+                : recurrentEventRows.Select(_identityMap.GetOrAdd).ToArray();
             result.AddRange(recurrentEvents);
         }
 
         return result.ToArray();
     }
 
+    private FilterRule? MergeEventEntityTypeFilterRule(EventEntityType type, FilterRule? filterRule)
+    {
+        var typeFilterRule = NewEntityTypeFilterRule(type);
+        return FilterRuleUtil.AndSafe(typeFilterRule, filterRule);
+    }
+
+    private static FilterRule? NewEntityTypeFilterRule(EventEntityType type)
+    {
+        var rowTypes = new List<EventRowType>();
+        if (type.HasFlag(EventEntityType.OneTimeEvent))
+            rowTypes.Add(EventRowType.Event);
+        if (type.HasFlag(EventEntityType.OccurrenceAdjustment))
+            rowTypes.Add(EventRowType.Occurrence);
+
+        return rowTypes.Count switch
+        {
+            0 => null,
+            1 => FilterRule.Eq("type", rowTypes[0]),
+            _ => FilterRule.In("type", rowTypes.ToArray()),
+        };
+    }
+
     public virtual async Task<bool> AnyAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase
     {
-        var eventRowResult = await Queryable<EventRow<TData>>(MergeTypeFilterRule<T>(filterRule)).AnyAsync();
+        var eventRowResult = await Queryable<EventRow<TData>>(WithTypeFilterRule<T>(filterRule)).AnyAsync();
         return eventRowResult || (CanBeRecurrentEvent<T>() &&
                                   await Queryable<RecurrentEventRow<TData>>(filterRule).AnyAsync());
     }
 
     public virtual async Task<int> CountAsync<T>(FilterRule? filterRule = null) where T : IEventEntityBase
     {
-        var eventRowCount = await CountInternalAsync<EventRow<TData>>(MergeTypeFilterRule<T>(filterRule));
+        var eventRowCount = await CountInternalAsync<EventRow<TData>>(WithTypeFilterRule<T>(filterRule));
         return CanBeRecurrentEvent<T>()
             ? eventRowCount + await CountInternalAsync<RecurrentEventRow<TData>>(filterRule)
             : eventRowCount;
@@ -363,29 +348,12 @@ public class EventRepository<TData> : IEventRepository<TData>
         throw new InvalidOperationException($"Unsupported type {typeof(TRow).Name}");
     }
 
-    private FilterRule? MergeTypeFilterRule<T>(FilterRule? filterRule)
+    private FilterRule? WithTypeFilterRule<T>(FilterRule? filterRule)
         where T : IEventEntityBase
     {
-        var type = EventRowType<T>();
+        var type = EventRowTypeUtil.ByType<T>();
         var typeFilterRule = type.HasValue ? FilterRule.Eq("type", type.Value) : null;
-        return typeFilterRule == null ? filterRule :
-            filterRule != null ? FilterRule.And(typeFilterRule, filterRule) : typeFilterRule;
-    }
-
-    private EventRowType? EventRowType<T>()
-        where T : IEventEntityBase
-    {
-        if (typeof(T) == typeof(IEventEntityBase))
-            return null;
-
-        if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Event<>))
-            return EntityFramework.EventRowType.Event;
-
-        if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(OccurrenceAdjustment<>))
-            return EntityFramework.EventRowType.Occurrence;
-
-        throw new InvalidOperationException(
-            $"Type {typeof(T).FullName} is unknown by {nameof(EventRepository<TData>)}");
+        return FilterRuleUtil.AndSafe(typeFilterRule, filterRule);
     }
 
     private bool CanBeRecurrentEvent<T>()
