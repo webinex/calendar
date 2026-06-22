@@ -29,6 +29,8 @@ public class Occurrence<TData> : IEventEntityBase
     /// </summary>
     public TData Data { get; }
 
+    public bool IsOneTime() => OccurrenceId.Parse(Id).IsOneTimeEvent();
+
     public Occurrence(
         string id,
         string timeZone,
@@ -38,7 +40,7 @@ public class Occurrence<TData> : IEventEntityBase
     {
         Id = id;
         TimeZone = timeZone;
-        Period = period;
+        Period = period.ToUtc();
         Data = data;
         Group = groupId;
     }

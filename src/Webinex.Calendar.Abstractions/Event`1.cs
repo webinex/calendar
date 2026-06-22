@@ -31,7 +31,7 @@ public class Event<TData> : IEvent<TData> where TData : class, ICloneable
 
         Id = id;
         TimeZone = timeZone;
-        Period = period.Clone();
+        Period = period.ToUtc().Clone();
         Group = groupId.Clone();
         Data = (TData)data.Clone();
         Recurrence = recurrence?.Clone();

@@ -311,11 +311,12 @@ public class EventRepository<TData> : IEventRepository<TData>
             {
                 Id = x.Key,
                 Start = x.Min(e => e.Recurrence.MGRecurrence!.Period.Start),
-                End = x.Max(e => e.Recurrence.MGRecurrence!.Period.End ?? DateOnly.MinValue),
+                End = x.Max(e => e.Recurrence.MGRecurrence!.Period.End ?? DateOnly.MaxValue),
             })
             .ToArrayAsync();
 
-        return result.Select(x => new EventGroup(x.Id, x.Start, x.End == DateOnly.MinValue ? null : x.End)).ToArray();
+        // DateOnly.MaxValue could not be set for MGRecurrence.Period.End as it limited to CalendarConstants.MAX_DATE_ONLY
+        return result.Select(x => new EventGroup(x.Id, x.Start, x.End == DateOnly.MaxValue ? null : x.End)).ToArray();
     }
 
     private async Task<int> CountInternalAsync<TRow>(FilterRule? filterRule) where TRow : class, IEventRow

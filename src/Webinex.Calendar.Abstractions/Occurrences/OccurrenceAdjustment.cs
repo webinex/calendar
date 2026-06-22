@@ -53,7 +53,7 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
         Group = groupId.Clone();
         Data = (TData?)data?.Clone();
         Cancelled = cancelled;
-        Period = period.Clone();
+        Period = period.ToUtc().Clone();
         MoveTo = moveTo?.Clone();
     }
 

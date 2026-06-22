@@ -47,7 +47,7 @@ public class RecurrentEventRow<TData> : IEventRow
         {
             Id = @event.Id,
             Effective = @event.Effective(),
-            Period = @event.Period.Clone(),
+            Period = @event.Period.ToUtc().Clone(),
             TimeZone = @event.TimeZone,
             Group = @event.Group.Clone(),
             Data = (TData)@event.Data.Clone(),

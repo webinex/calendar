@@ -49,6 +49,7 @@ internal class RecurrentEventUpdateService<TData>
         private string NewEventTimeZone => Args.TimeZone?.Value ?? ParentEvent.TimeZone;
         private TData NewEventData => Args.Data?.Value ?? Adjustment?.Data ?? ParentEvent.Data;
         private DateOnly NewEventStartDate => NewEventPeriod.Start.ToDateOnly(NewEventTimeZone);
+        private DateOnly? NewEventEndDate => EndDateOfAffectedRecurrentEvents();
 
         public IEnumerable<Operation> Calculate()
         {
@@ -92,7 +93,7 @@ internal class RecurrentEventUpdateService<TData>
         {
             var recurrence = Args.Recurrence?.Value ?? ParentEvent.Recurrence!.WithPeriod(
                 NewEventStartDate,
-                ParentEvent.Recurrence!.EndDate());
+                NewEventEndDate);
 
             var newEvent = Event<TData>.New(
                 NewEventPeriod,
@@ -113,6 +114,18 @@ internal class RecurrentEventUpdateService<TData>
         private bool IsFirstOccurence()
         {
             return ParentEvent.Recurrence!.StartDate() == Args.Id.Start.ToDateOnly(ParentEvent.TimeZone);
+        }
+
+        private DateOnly? EndDateOfAffectedRecurrentEvents()
+        {
+            var affectedRecurrentEvents = GroupEvents
+                .OfType<Event<TData>>()
+                .Where(x => x.Id == ParentEvent.Id || x.Period.Start >= Args.Id.Start)
+                .ToArray();
+
+            return affectedRecurrentEvents.Any(x => !x.Recurrence!.EndDate().HasValue)
+                ? null
+                : affectedRecurrentEvents.Max(x => x.Recurrence!.EndDate());
         }
     }
 }

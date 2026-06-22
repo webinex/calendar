@@ -34,7 +34,7 @@ public class EventRow<TData> : IEventRow
         Type = type;
         RecurrentEventId = recurrentEventId;
         Effective = effective.Clone();
-        Period = period.Clone();
+        Period = period.ToUtc().Clone();
         TimeZone = timeZone;
         Group = groupId.Clone();
         Data = (TData?)data?.Clone();
