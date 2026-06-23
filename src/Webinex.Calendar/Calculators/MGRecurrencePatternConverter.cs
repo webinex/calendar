@@ -13,9 +13,8 @@ internal static class MGRecurrencePatternConverter
             Interval = pattern.Interval,
             Frequency = MapFrequencyType(pattern.Type),
             
-            // Don't remove Until date, otherwise CalendarExtensions.GetOccurrencesEnumerable won't work correctly,
-            // because it checks Until dates of rules
-            Until = until,
+            // Keep Until as a hard stop for lazy occurrence enumeration.
+            Until = new CalDateTime(until, TimeZoneInfo.Utc.Id),
         };
 
         if (pattern.DaysOfWeek is { Count: > 0 })

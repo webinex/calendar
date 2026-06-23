@@ -1,4 +1,5 @@
-﻿using Ical.Net.CalendarComponents;
+﻿using Ical.Net;
+using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using NodaTime;
 using NodaTime.Extensions;
@@ -43,14 +44,19 @@ public static class RecurrenceCalculator
     {
         var iCalEvent = MapToICalEvent(@event);
 
+        var takeWhile = end?.ToDateTimeUnspecified().AsUTCCalDateTime()
+                        ?? iCalEvent.RecurrenceRule?.Until
+                        ?? new CalDateTime(CalendarConstants.MAX_DATE_TIME, TimeZoneInfo.Utc.Id);
+
+        // We use .AddSeconds(-1) to avoid match events by inclusive end
+        // For Ical period of 18:00 - 19:00 will match with event which starts at 19:00
+        takeWhile = takeWhile.AddSeconds(-1);
+
         var calendar = new Ical.Net.Calendar();
         calendar.Events.Add(iCalEvent);
 
-        return calendar.GetOccurrencesEnumerable(
-            start.ToDateTimeUnspecified(),
-            // We use .AddMilliseconds(-1) to avoid match events by inclusive end
-            // For Ical period of 18:00 - 19:00 will match with event which starts at 19:00
-            end?.ToDateTimeUnspecified().AddMilliseconds(-1));
+        return calendar.GetOccurrences(start.ToDateTimeUnspecified().AsUTCCalDateTime())
+            .TakeWhileBefore(takeWhile);
     }
 
     private static CalendarEvent MapToICalEvent(IEvent @event)
@@ -68,7 +74,7 @@ public static class RecurrenceCalculator
             // We only need to get times, so to do that we work with UTC timezone and then in Map convert to actual timezone
             Start = new CalDateTime(eventPeriodZoned.Start.ToDateTimeUnspecified(), "UTC"),
             End = new CalDateTime(eventPeriodZoned.End.ToDateTimeUnspecified(), "UTC"),
-            RecurrenceRules = { pattern },
+            RecurrenceRule = pattern,
         };
     }
 

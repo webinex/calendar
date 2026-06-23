@@ -75,6 +75,19 @@ public class RecurrenceCalculatorTests
     }
 
     [Test]
+    public void Occurrences_WhenLaterOccurrenceStartsAtRangeEnd_ShouldNotMatch()
+    {
+        var @event = Recurrent(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7)),
+            MGRecurrencePattern.Daily());
+
+        var result = Occurrences(@event, JAN1_2023_UTC, JAN1_2023_UTC.AddDays(1).AddHours(6));
+
+        result.Should().Equal(
+            Period.New(JAN1_2023_UTC.AddHours(6), JAN1_2023_UTC.AddHours(7)));
+    }
+
+    [Test]
     public void Occurrences_WhenOccurrenceEndsAtRangeStart_ShouldNotMatch()
     {
         var @event = Event.Factory.MGWeekly(
