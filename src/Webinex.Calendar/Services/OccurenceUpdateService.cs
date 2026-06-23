@@ -57,13 +57,16 @@ internal class OccurrenceUpdateService<TData> : IOccurrenceUpdateService<TData>
 
     private async IAsyncEnumerable<Operation> MapUpdateOneTimeOccurrenceOperationsAsync(UpdateOccurrenceArgs<TData> arg)
     {
-        var @event = await _eventRepository.EventAsync(arg.Id.EventId)
-                     ?? throw CodedException.NotFound(arg.Id.EventId);
+        var @event = await _eventRepository.EventOrThrowAsync(arg.Id.EventId);
+
         if (arg.Data != null)
             @event.SetData(
                 arg.Data?.Value ??
                 throw new InvalidOperationException($"Unable to reset data for one time event {arg.Id}"));
-        if (arg.Period != null) @event.SetPeriod(arg.Period.Value);
+
+        if (arg.Period != null)
+            @event.SetPeriod(arg.Period.Value);
+
         yield return Operation.Update(@event);
     }
 
@@ -72,17 +75,25 @@ internal class OccurrenceUpdateService<TData> : IOccurrenceUpdateService<TData>
     {
         var occurrenceAdjustment = await _eventRepository.OccurrenceAdjustmentAsync(arg.Id.ToString());
         return occurrenceAdjustment != null
-            ? MapUpdateExistingRecurrentOccurrenceOperations(arg, occurrenceAdjustment)
+            ? [MapUpdateExistingRecurrentOccurrenceOperation(arg, occurrenceAdjustment)]
             : await MapUpdateNotExistingRecurrentOccurrenceOperationsAsync(arg);
     }
 
-    private IEnumerable<Operation> MapUpdateExistingRecurrentOccurrenceOperations(
+    private Operation MapUpdateExistingRecurrentOccurrenceOperation(
         UpdateOccurrenceArgs<TData> arg,
         OccurrenceAdjustment<TData> occurrenceAdjustment)
     {
+        if (occurrenceAdjustment.Cancelled)
+            throw new InvalidOperationException($"Unable to update cancelled occurrence {arg.Id}");
+
+        var isMoveToOriginalPeriod = arg.Period != null && arg.Period.Value == occurrenceAdjustment.Period;
+        if (arg.Data == null && occurrenceAdjustment.Data == null && isMoveToOriginalPeriod)
+            return Operation.Remove(occurrenceAdjustment);
+
         if (arg.Period != null) occurrenceAdjustment.Move(arg.Period.Value);
         if (arg.Data != null) occurrenceAdjustment.SetData(arg.Data?.Value);
-        yield return Operation.Update(occurrenceAdjustment);
+        
+        return Operation.Update(occurrenceAdjustment);
     }
 
     private async Task<IEnumerable<Operation>> MapUpdateNotExistingRecurrentOccurrenceOperationsAsync(

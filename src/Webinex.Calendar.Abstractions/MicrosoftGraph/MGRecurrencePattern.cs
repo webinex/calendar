@@ -136,7 +136,8 @@ public class MGRecurrencePattern : Equatable
             RecurrenceType.RelativeMonthly,
             daysOfWeek: daysOfWeek.ToArray(),
             interval: interval,
-            firstDayOfWeek: firstDayOfWeek);
+            firstDayOfWeek: firstDayOfWeek,
+            index: index);
     }
 
     public static MGRecurrencePattern AbsoluteYearly(int dayOfMonth, int month, int interval = 1)

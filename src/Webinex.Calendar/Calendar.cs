@@ -1,5 +1,6 @@
 ﻿using Webinex.Asky;
 using Webinex.Calendar.Common;
+using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Services;
 
 namespace Webinex.Calendar;
@@ -38,6 +39,8 @@ internal class Calendar<TData> : ICalendar<TData>
     public async Task<IReadOnlyCollection<T>> AddRangeAsync<T>(IEnumerable<T> events)
         where T : IEvent<TData>
     {
+        events = events.ToArray();
+        foreach (var @event in events) @event.ValidateAtLeastOneOccurrenceOrThrow();
         var operations = events.Select(Operation.Add);
         var result = await _eventRepository.PatchAsync(operations);
         return result.Select(x => x.Value).Cast<T>().ToArray();
@@ -99,17 +102,14 @@ internal class Calendar<TData> : ICalendar<TData>
         return await _occurrenceReadService.OccurrencesAsync(period, dataFilterRule, tryCache);
     }
 
-    public async Task<IReadOnlyCollection<Occurrence<TData>>> MaterializedOccurrencesAsync(
-        FilterRule? filterRule = null,
-        IEnumerable<SortRule>? sortRules = null,
-        PagingRule? pagingRule = null)
-    {
-        return await _occurrenceReadService.MaterializedOccurrencesAsync(filterRule, sortRules, pagingRule);
-    }
-
     public async Task<IReadOnlyCollection<Occurrence<TData>>> OccurrencesAsync(IEnumerable<string> ids, bool tryCache = false)
     {
         return await _occurrenceReadService.OccurrencesAsync(ids, tryCache);
+    }
+
+    public async Task<ILookup<string, Occurrence<TData>>> OccurrencesByEventAsync(OccurrencesByEventQueryArgs args)
+    {
+        return await _occurrenceReadService.OccurrencesByEventAsync(args);
     }
 
     public async Task<IReadOnlyCollection<EventGroup>> EventGroupAsync(IEnumerable<Guid> ids)

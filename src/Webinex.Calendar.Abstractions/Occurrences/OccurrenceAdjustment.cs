@@ -53,7 +53,7 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
         Group = groupId.Clone();
         Data = (TData?)data?.Clone();
         Cancelled = cancelled;
-        Period = period.Clone();
+        Period = period.ToUtc().Clone();
         MoveTo = moveTo?.Clone();
     }
 
@@ -61,10 +61,14 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
     {
     }
 
+    /// <summary>
+    ///     Search window where adjustment may take effect.
+    /// </summary>
+    /// <returns>Adjustment effective period</returns>
     public Period<DateTimeOffset> Effective()
     {
-        var start = MoveTo?.Start < Period.Start ? MoveTo.Start : Period.Start;
-        var end = MoveTo?.End > Period.End ? MoveTo.End : Period.End;
+        var start = MoveTo != null ? DateTimeOffsetUtil.Min(MoveTo.Start, Period.Start) : Period.Start;
+        var end = MoveTo != null ? DateTimeOffsetUtil.Max(MoveTo.End, Period.End) : Period.End;
         return new Period<DateTimeOffset>(start, end);
     }
 
@@ -87,28 +91,45 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
     public void Move(Period<DateTimeOffset> period)
     {
         if (Period == period)
+        {
+            MoveTo = null;
             return;
+        }
 
         MoveTo = period;
     }
 
-    public static OccurrenceAdjustment<TData> NewCancel(string recurrentEventId, EventGroupId groupId,
+    public static OccurrenceAdjustment<TData> NewCancel(
+        string recurrentEventId,
+        EventGroupId groupId,
         Period<DateTimeOffset> period)
     {
         var id = new OccurrenceId(recurrentEventId, period.Start);
-        return new OccurrenceAdjustment<TData>(id.ToString(), recurrentEventId, period, groupId: groupId, cancelled: true,
+        return new OccurrenceAdjustment<TData>(
+            id.ToString(),
+            recurrentEventId,
+            period,
+            groupId: groupId,
+            cancelled: true,
             data: null,
             moveTo: null);
     }
 
-    public static OccurrenceAdjustment<TData> NewData(string recurrentEventId, EventGroupId groupId,
+    public static OccurrenceAdjustment<TData> NewData(
+        string recurrentEventId,
+        EventGroupId groupId,
         Period<DateTimeOffset> period,
         TData data)
     {
         var id = new OccurrenceId(recurrentEventId, period.Start);
-        return new OccurrenceAdjustment<TData>(id.ToString(), recurrentEventId, period, groupId: groupId,
+        return new OccurrenceAdjustment<TData>(
+            id.ToString(),
+            recurrentEventId,
+            period,
+            groupId: groupId,
             data: (TData)data.Clone(),
-            moveTo: null, cancelled: false);
+            moveTo: null,
+            cancelled: false);
     }
 
     public static OccurrenceAdjustment<TData> NewUpdate(
@@ -128,12 +149,19 @@ public class OccurrenceAdjustment<TData> : IEventEntityBase
             cancelled: false);
     }
 
-    public static OccurrenceAdjustment<TData> NewMove(string recurrentEventId, EventGroupId groupId,
+    public static OccurrenceAdjustment<TData> NewMove(
+        string recurrentEventId,
+        EventGroupId groupId,
         Period<DateTimeOffset> period,
         Period<DateTimeOffset> moveTo)
     {
         var id = new OccurrenceId(recurrentEventId, period.Start);
-        return new OccurrenceAdjustment<TData>(id.ToString(), recurrentEventId, period, groupId: groupId, moveTo: moveTo,
+        return new OccurrenceAdjustment<TData>(
+            id.ToString(),
+            recurrentEventId,
+            period,
+            groupId: groupId,
+            moveTo: moveTo,
             data: null,
             cancelled: false);
     }

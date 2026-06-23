@@ -42,6 +42,8 @@ public class OccurrenceId : Equatable
         return id.StartsWith("O");
     }
 
+    public bool IsOneTimeEvent() => Calendar.EventId.IsOneTime(EventId);
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return EventId;

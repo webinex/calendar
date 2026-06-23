@@ -23,7 +23,7 @@ public class CalendarExtensionsTests
             {
                 new RecurrencePattern(FrequencyType.Monthly)
                 {
-                    Until = DateTime.MaxValue,
+                    Until = CalendarConstants.MAX_DATE_TIME.AddDays(1),
                 },
             },
         };

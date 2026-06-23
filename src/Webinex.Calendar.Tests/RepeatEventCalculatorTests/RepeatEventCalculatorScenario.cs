@@ -1,90 +1,83 @@
-﻿using System;
+using System;
+using System.Linq;
 using FluentAssertions;
-using Webinex.Calendar.MicrosoftGraph;
+using Webinex.Calendar.Calculators;
+using Webinex.Calendar.Extensions;
 
 namespace Webinex.Calendar.Tests.RepeatEventCalculatorTests;
 
 public class RepeatEventCalculatorScenario
 {
-    private Event<object>? _event;
-    private OpenPeriod? _range;
+    private Event<None>? _event;
+    private OpenPeriod<DateTimeOffset>? _range;
 
-    public RepeatEventCalculatorScenario WithWeekdayMatch(
-        string timeOfTheDay,
-        string duration,
+    public RepeatEventCalculatorScenario WithWeekly(
+        Period<DateTimeOffset> period,
         string tz,
         int? interval,
-        DateTimeOffset effectiveStart,
-        DateTimeOffset? effectiveEnd,
-        params Weekday[] weekdays)
+        params DayOfWeek[] daysOfWeek)
     {
-        _event = new RecurrentEvent<object>(
-            Guid.NewGuid(),
-            MGRecurrence.NewWeekday(
-                (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
-                (int)TimeSpan.Parse(duration).TotalMinutes,
-                weekdays,
-                tz,
-                interval),
-            new OpenPeriod(effectiveStart, effectiveEnd), new object());
+        _event = Event.Factory.MGWeekly(
+            period,
+            tz,
+            new None(),
+            daysOfWeek,
+            interval ?? 1);
 
         return this;
     }
 
-    public RepeatEventCalculatorScenario WithWeekdayMatch(
-        string timeOfTheDay,
-        string duration,
+    public RepeatEventCalculatorScenario WithWeekly(
+        Period<DateTimeOffset> period,
         string tz,
-        params Weekday[] weekdays)
+        int? interval,
+        DateOnly? until,
+        params DayOfWeek[] daysOfWeek)
     {
-        return WithWeekdayMatch(timeOfTheDay, duration, tz, null, DateTimeOffset.MinValue, null, weekdays);
-    }
-
-    public RepeatEventCalculatorScenario WithDayOfMonthMatch(
-        string timeOfTheDay,
-        string duration,
-        int dayOfMonth,
-        string? tz = default)
-    {
-        _event = new RecurrentEvent<object>(
-            Guid.NewGuid(),
-            MGRecurrence.NewDayOfMonth(
-                (int)TimeSpan.Parse(timeOfTheDay).TotalMinutes,
-                (int)TimeSpan.Parse(duration).TotalMinutes,
-                new DayOfMonth(dayOfMonth),
-                tz ?? TimeZoneInfo.Utc.Id),
-            new OpenPeriod(DateTimeOffset.MinValue, null), new object());
+        _event = Event.Factory.MGWeekly(
+            period,
+            tz,
+            new None(),
+            daysOfWeek,
+            interval ?? 1,
+            until);
 
         return this;
     }
 
-    public RepeatEventCalculatorScenario WithInterval(DateTimeOffset start, string interval, string duration)
+    public RepeatEventCalculatorScenario WithAbsoluteMonthly(
+        Period<DateTimeOffset> period,
+        string tz,
+        int dayOfMonth,
+        int? interval = null,
+        DateOnly? until = null)
     {
-        _event = RecurrentEvent<object>.NewInterval(
-            start,
-            null,
-            (int)TimeSpan.Parse(interval).TotalMinutes,
-            (int)TimeSpan.Parse(duration).TotalMinutes,
-            new object());
+        _event = Event.Factory.MGAbsoluteMonthly(
+            period,
+            tz,
+            new None(),
+            dayOfMonth,
+            until,
+            interval ?? 1);
 
         return this;
     }
 
     public RepeatEventCalculatorScenario WithRange(DateTimeOffset start, DateTimeOffset end)
     {
-        _range = new OpenPeriod(start, end);
+        _range = new OpenPeriod<DateTimeOffset>(start, end);
         return this;
     }
 
-    public Period[] Run()
+    public Period<DateTimeOffset>[] Run()
     {
         if (_event == null || _range == null)
             throw new InvalidOperationException();
 
-        return RepeatEventCalculator.Matches(_event, _range.Start, _range.End!.Value).ToArray();
+        return RecurrenceCalculator.Occurrences(_event, _range).ToArray();
     }
 
-    public void ToBeEquivalent(params Period[] periods)
+    public void ToBeEquivalent(params Period<DateTimeOffset>[] periods)
     {
         Run().Should().BeEquivalentTo(periods);
     }

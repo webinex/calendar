@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Webinex.Asky;
 using Webinex.Calendar.Extensions;
+using Webinex.Calendar.Tests.Integration.Common;
 using Webinex.Calendar.Tests.Integration.Setups;
 
 namespace Webinex.Calendar.Tests.Integration;
@@ -105,6 +106,160 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
 
         eventsAfter.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
         eventsAfter.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
+    }
+
+    [Test]
+    public async Task WhenMoveWeeklyOccurrenceForwardAndBack_ShouldReturnToOriginalTime()
+    {
+        var start = DateTimeOffset.Parse("2026-06-22T13:00:00+000"); // Monday
+        var monday = start;
+        var tuesday = start.AddDays(1);
+        var wednesday = start.AddDays(2);
+        var searchEnd = start.AddDays(3);
+
+        var @event = Event.Factory.MGWeekly(
+            Period.New(start, start.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test(),
+            [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday]);
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var eventsBefore = (await Calendar.OccurrencesAsync(start, searchEnd))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+        var tuesdayOccurrence = eventsBefore.Single(x => x.Period.Start == tuesday);
+
+        await Calendar.MoveAsync(
+            tuesdayOccurrence.Id,
+            Period.New(tuesday.AddHours(2), tuesday.AddHours(3)));
+        await DbContext.SaveChangesAsync();
+
+        var eventsAfterMoveForward = (await Calendar.OccurrencesAsync(start, searchEnd))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+
+        eventsAfterMoveForward.Select(x => x.Period).Should().Equal(
+            Period.New(monday, monday.AddHours(1)),
+            Period.New(tuesday.AddHours(2), tuesday.AddHours(3)),
+            Period.New(wednesday, wednesday.AddHours(1)));
+
+        await Calendar.MoveAsync(
+            tuesdayOccurrence.Id,
+            Period.New(tuesday, tuesday.AddHours(1)));
+        await DbContext.SaveChangesAsync();
+
+        var eventsAfterMoveBack = (await Calendar.OccurrencesAsync(start, searchEnd))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+
+        eventsAfterMoveBack.Select(x => x.Period).Should().Equal(
+            Period.New(monday, monday.AddHours(1)),
+            Period.New(tuesday, tuesday.AddHours(1)),
+            Period.New(wednesday, wednesday.AddHours(1)));
+
+        var occurrenceAdjustment = await Calendar.ByIdAsync<OccurrenceAdjustment<EventData>>(tuesdayOccurrence.Id);
+        occurrenceAdjustment.Should().BeNull();
+    }
+
+    [Test]
+    public async Task WhenMoveExistingOccurrenceAdjustmentToOriginalPeriodWithoutData_ShouldDeleteAdjustment()
+    {
+        var start = DateTimeOffset.Parse("2026-06-22T13:00:00+000"); // Monday
+        var tuesday = start.AddDays(1);
+
+        var @event = Event.Factory.MGWeekly(
+            Period.New(start, start.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test(),
+            [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday]);
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var occurrenceId = new OccurrenceId(@event.Id, tuesday).ToString();
+
+        await Calendar.MoveAsync(
+            occurrenceId,
+            Period.New(tuesday.AddHours(2), tuesday.AddHours(3)));
+        await DbContext.SaveChangesAsync();
+
+        var occurrenceAdjustmentBeforeMoveBack =
+            await Calendar.ByIdAsync<OccurrenceAdjustment<EventData>>(occurrenceId);
+        occurrenceAdjustmentBeforeMoveBack.Should().NotBeNull();
+        occurrenceAdjustmentBeforeMoveBack!.MoveTo.Should().Be(Period.New(tuesday.AddHours(2), tuesday.AddHours(3)));
+        occurrenceAdjustmentBeforeMoveBack.Data.Should().BeNull();
+
+        await Calendar.MoveAsync(
+            occurrenceId,
+            Period.New(tuesday, tuesday.AddHours(1)));
+        await DbContext.SaveChangesAsync();
+
+        var occurrenceAdjustmentAfterMoveBack =
+            await Calendar.ByIdAsync<OccurrenceAdjustment<EventData>>(occurrenceId);
+        occurrenceAdjustmentAfterMoveBack.Should().BeNull();
+    }
+
+    [Test]
+    public async Task WhenMoveOccurrenceAndGroupMoveInFutureExists_ShouldKeepFollowingOccurrences()
+    {
+        var timeZone = "America/New_York";
+        var monday = DateTimeOffset.Parse("2026-06-22T08:00:00-04:00"); // Monday
+        var wednesday = monday.AddDays(2);
+        var thursday = monday.AddDays(3);
+        var weekPeriod = Period.New(monday.StartOfDay(), monday.StartOfDay().AddDays(7));
+
+        var @event = Event.Factory.MGWeekly(
+            Period.New(monday, monday.AddHours(1)),
+            timeZone,
+            EventData.Test(),
+            [
+                DayOfWeek.Monday,
+                DayOfWeek.Tuesday,
+                DayOfWeek.Wednesday,
+                DayOfWeek.Thursday,
+                DayOfWeek.Friday,
+                DayOfWeek.Saturday,
+                DayOfWeek.Sunday
+            ]);
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var wednesdayOccurrenceId = new OccurrenceId(@event.Id, wednesday).ToString();
+
+        await Calendar.MoveAsync(
+            wednesdayOccurrenceId,
+            Period.New(wednesday.AddHours(2), wednesday.AddHours(3)));
+        await DbContext.SaveChangesAsync();
+
+        var thursdayOccurrenceId = new OccurrenceId(@event.Id, thursday).ToString();
+
+        await Calendar.UpdateOccurenceAsync(UpdateOccurrenceArgs<EventData>.NewMove(
+            thursdayOccurrenceId,
+            Period.New(thursday.AddHours(4), thursday.AddHours(5)),
+            behavior: OccurenceUpdateBehavior.Group));
+        await DbContext.SaveChangesAsync();
+
+        await Calendar.UpdateOccurenceAsync(UpdateOccurrenceArgs<EventData>.NewMove(
+            wednesdayOccurrenceId,
+            Period.New(wednesday, wednesday.AddHours(1)),
+            behavior: OccurenceUpdateBehavior.Group));
+        await DbContext.SaveChangesAsync();
+
+        var result = (await Calendar.OccurrencesAsync(weekPeriod))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+
+        result.Select(x => x.Period).Should().Equal(
+            Period.New(monday, monday.AddHours(1)),
+            Period.New(monday.AddDays(1), monday.AddDays(1).AddHours(1)),
+            Period.New(wednesday, wednesday.AddHours(1)),
+            Period.New(thursday, thursday.AddHours(1)),
+            Period.New(monday.AddDays(4), monday.AddDays(4).AddHours(1)),
+            Period.New(monday.AddDays(5), monday.AddDays(5).AddHours(1)),
+            Period.New(monday.AddDays(6), monday.AddDays(6).AddHours(1)));
     }
 
     [Test]
