@@ -64,6 +64,10 @@ public interface IEventRepository<TData>
 
     /// <summary>
     ///     Returns <typeparamref name="T"/> matched specified search criteria
+    ///     <br />
+    ///     When <typeparamref name="T" /> allows mixed results, like <see cref="IEventEntityBase" />
+    ///     or <see cref="Event{TData}" />, sorting and paging are applied separately to one-time or
+    ///     occurrence rows and recurrent event rows before their results are merged.
     /// </summary>
     /// <typeparam name="T">Type of return value. One of: <see cref="IEventEntityBase"/> (all values), <see cref="Event{TData}"/> or <see cref="OccurrenceAdjustment{TData}"/></typeparam>
     Task<IReadOnlyCollection<T>> GetAllAsync<T>(
@@ -75,6 +79,10 @@ public interface IEventRepository<TData>
 
     /// <summary>
     ///     Returns <see cref="IEventEntityBase"/> matched specified search criteria
+    ///     <br />
+    ///     When <paramref name="type" /> requests mixed results from both one-time or occurrence rows
+    ///     and recurrent event rows, sorting and paging are applied separately to both groups before
+    ///     their results are merged.
     /// </summary>
     Task<IReadOnlyCollection<IEventEntityBase>> GetAllAsync(
         EventEntityType type,

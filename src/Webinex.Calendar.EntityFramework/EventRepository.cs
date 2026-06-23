@@ -203,6 +203,8 @@ public class EventRepository<TData> : IEventRepository<TData>
     {
         sortRules = sortRules?.ToArray();
 
+        // Sort and paging are applied per physical source before merging EventRow and RecurrentEventRow.
+        // This keeps the query database-side, but it is not a global page across both sources.
         var eventRowResult =
             await Queryable<EventRow<TData>>(WithTypeFilterRule<T>(filterRule), sortRules, pagingRule, readOnly)
                 .ToArrayAsync();
@@ -239,6 +241,8 @@ public class EventRepository<TData> : IEventRepository<TData>
         if (type.HasFlag(EventEntityType.OneTimeEvent) || type.HasFlag(EventEntityType.OccurrenceAdjustment))
         {
             var eventRowFilterRule = MergeEventEntityTypeFilterRule(type, filterRule);
+            // Sort and paging are applied per physical source before merging with recurrent events.
+            // This keeps the query database-side, but it is not a global page across both sources.
             var eventRows = await Queryable<EventRow<TData>>(eventRowFilterRule, sortRules, pagingRule, readOnly)
                 .ToArrayAsync();
 
