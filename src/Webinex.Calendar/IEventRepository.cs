@@ -182,13 +182,13 @@ public static class EventRepositoryExtensions
         return result.Values.Cast<Event<TData>>().ToArray();
     }
 
-    public static async Task<IReadOnlyCollection<Event<TData>>> RemoveRangeAsync<TData>(
+    public static async Task<IReadOnlyCollection<IEventEntityBase>> RemoveRangeAsync<TData>(
         this IEventRepository<TData> repository,
         IEnumerable<IEventEntityBase> events)
         where TData : class, ICloneable
     {
         var result = await repository.PatchAsync(events.Select(Operation.Remove));
-        return result.Values.Cast<Event<TData>>().ToArray();
+        return result.Values.ToArray();
     }
 
     public static async Task<IReadOnlyCollection<OccurrenceAdjustment<TData>>> RemoveRangeAsync<TData>(

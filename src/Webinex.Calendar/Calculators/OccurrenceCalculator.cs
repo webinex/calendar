@@ -65,16 +65,25 @@ public class OccurrenceCalculator<TData>
             .First();
     }
 
-    public static Occurrence<TData> CalculateOccurrenceAdjustment(
+    public static bool TryCalculateOccurrenceAdjustment(
         Event<TData> @event,
-        OccurrenceAdjustment<TData> adjustment)
+        OccurrenceAdjustment<TData> adjustment,
+        [NotNullWhen(true)] out Occurrence<TData>? result)
     {
-        return new Occurrence<TData>(
+        if (adjustment.Cancelled)
+        {
+            result = null;
+            return false;
+        }
+        
+        result = new Occurrence<TData>(
             adjustment.Id,
             @event.TimeZone,
             adjustment.Group,
             adjustment.MoveTo ?? adjustment.Period,
             adjustment.Data ?? @event.Data);
+
+        return true;
     }
 
     private IEnumerable<Occurrence<TData>> CalculateRecurrent(Event<TData> @event)

@@ -136,10 +136,10 @@ internal class OccurrenceReadService<TData> : IOccurrenceReadService<TData>
         var idInstances = ids.Select(OccurrenceId.Parse).ToArray();
         var entities = await _eventRepository.ByIdAsync<IEventEntityBase>(
             idInstances.Select(x => x.ToString()).Concat(idInstances.Select(x => x.EventId)));
-        return idInstances.Select(id => MapOccurrence(id, entities)).ToArray();
+        return idInstances.Select(id => MapOccurrence(id, entities)).Where(x => x != null).ToArray()!;
     }
 
-    private Occurrence<TData> MapOccurrence(OccurrenceId id, IReadOnlyCollection<IEventEntityBase> entities)
+    private Occurrence<TData>? MapOccurrence(OccurrenceId id, IReadOnlyCollection<IEventEntityBase> entities)
     {
         var adjustment = entities.OfType<OccurrenceAdjustment<TData>>().FirstOrDefault(x => x.Id == id.ToString());
 
@@ -147,7 +147,9 @@ internal class OccurrenceReadService<TData> : IOccurrenceReadService<TData>
         @event = @event ?? throw new InvalidOperationException($"Unable to find event for occurrence id {id}");
 
         if (adjustment != null)
-            return OccurrenceCalculator<TData>.CalculateOccurrenceAdjustment(@event, adjustment);
+            return OccurrenceCalculator<TData>.TryCalculateOccurrenceAdjustment(@event, adjustment, out var occurrence)
+                ? occurrence
+                : null;
 
         return OccurrenceCalculator<TData>.Calculate(id, @event, adjustment);
     }

@@ -156,5 +156,7 @@ public class EventRow<TData> : IEventRow
         
         if (MoveTo != value.MoveTo)
             MoveTo = value.MoveTo?.Clone();
+
+        Effective = value.Effective();
     }
 }
