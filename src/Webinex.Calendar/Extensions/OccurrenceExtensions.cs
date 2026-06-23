@@ -35,8 +35,7 @@ public static class OccurrenceExtensions
         calendar.Events.Add(calendarEvent);
 
         var serializer = new CalendarSerializer();
-        var serializedCalendar = serializer.SerializeToString(calendar);
-
+        var serializedCalendar = serializer.SerializeToString(calendar)!;
         return Encoding.UTF8.GetBytes(serializedCalendar);
     }
 }
