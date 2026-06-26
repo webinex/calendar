@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
     <Title>Webinex Calendar</Title>
-    <PackageVersion>2.0.0-build6</PackageVersion>
+    <PackageVersion>2.0.0-build7</PackageVersion>
     <Authors>Webinex Dev</Authors>
     <NoWarn>$(NoWarn);CS1591;CS0660;CS0661</NoWarn>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
