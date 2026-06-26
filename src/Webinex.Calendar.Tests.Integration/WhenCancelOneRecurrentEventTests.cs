@@ -28,6 +28,65 @@ public class WhenCancelOneRecurrentEventTests : IntegrationTestsBase
         eventsAfter.Single().Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(12));
     }
 
+    [Test]
+    public async Task WhenDailyKiritimatiOccurrenceIsCancelledAsGroup_ShouldRemoveAllOccurrencesSinceLocalDate()
+    {
+        var @event = Event.Factory.MGDaily(
+            Period.New(
+                DateTimeOffset.Parse("2026-06-20T18:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-20T19:00:00+00:00")),
+            "Pacific/Kiritimati",
+            EventData.Test());
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var eventsBefore = await Calendar.OccurrencesAsync(
+            DateTimeOffset.Parse("2026-06-20T21:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-26T21:00:00+00:00"));
+        eventsBefore.Count.Should().Be(6);
+
+        var occurrenceToCancel = eventsBefore.Single(x =>
+            x.Period.Start == DateTimeOffset.Parse("2026-06-21T18:00:00+00:00"));
+        await Calendar.CancelOccurrenceAsync(occurrenceToCancel.Id, OccurenceUpdateBehavior.Group);
+        await DbContext.SaveChangesAsync();
+
+        var eventsAfter = await Calendar.OccurrencesAsync(
+            DateTimeOffset.Parse("2026-06-20T21:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-26T21:00:00+00:00"));
+        eventsAfter.Count.Should().Be(0);
+    }
+
+    [Test]
+    public async Task WhenDailyKiritimatiOccurrenceIsCancelledAsGroup_ShouldKeepOnlyPreviousOccurrence()
+    {
+        var @event = Event.Factory.MGDaily(
+            Period.New(
+                DateTimeOffset.Parse("2026-06-20T18:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-20T19:00:00+00:00")),
+            "Pacific/Kiritimati",
+            EventData.Test());
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var eventsBefore = await Calendar.OccurrencesAsync(
+            DateTimeOffset.Parse("2026-06-20T17:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-26T21:00:00+00:00"));
+        eventsBefore.Count.Should().Be(7);
+
+        var occurrenceToCancel = eventsBefore.Single(x =>
+            x.Period.Start == DateTimeOffset.Parse("2026-06-21T18:00:00+00:00"));
+        await Calendar.CancelOccurrenceAsync(occurrenceToCancel.Id, OccurenceUpdateBehavior.Group);
+        await DbContext.SaveChangesAsync();
+
+        var eventsAfter = await Calendar.OccurrencesAsync(
+            DateTimeOffset.Parse("2026-06-20T17:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-26T21:00:00+00:00"));
+        eventsAfter.Should().ContainSingle();
+        eventsAfter.Single().Period.Start.Should().Be(DateTimeOffset.Parse("2026-06-20T18:00:00+00:00"));
+    }
+
     [SetUp]
     public void SetUp()
     {

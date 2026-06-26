@@ -142,7 +142,7 @@ public static class EventExtensions
     {
         var tz = DateTimeZoneProviders.Tzdb[@event.TimeZone];
         // MG recurrence end date is inclusive, so the first instant after that date is an exclusive start boundary.
-        return @event.Recurrence!.MGRecurrence!.Period.End!.Value.InZone(@event.TimeZone).PlusDays(1)
+        return @event.Recurrence!.MGRecurrence!.Period.End!.Value.ToLocalDateTime().PlusDays(1)
             .InZoneLeniently(tz).ToDateTimeOffset().ToUniversalTime();
     }
 
