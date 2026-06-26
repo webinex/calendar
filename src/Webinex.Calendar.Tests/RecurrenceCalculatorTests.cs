@@ -245,6 +245,39 @@ public class RecurrenceCalculatorTests
             Period.New(DateTimeOffset.Parse("2023-01-08T06:00:00+00:00"), DateTimeOffset.Parse("2023-01-08T07:00:00+00:00")));
     }
 
+    [Test]
+    public void Occurrences_WhenWeeklyRecurrenceUsesPositiveOffsetTimeZone_ShouldStopOnLocalUntilDate()
+    {
+        var @event = Recurrent(
+            Period.New(
+                DateTimeOffset.Parse("2026-06-21T18:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-21T19:00:00+00:00")),
+            MGRecurrencePattern.Weekly([
+                DayOfWeek.Monday,
+                DayOfWeek.Tuesday,
+                DayOfWeek.Wednesday,
+                DayOfWeek.Thursday,
+                DayOfWeek.Friday,
+                DayOfWeek.Saturday,
+                DayOfWeek.Sunday,
+            ]),
+            "Pacific/Kiritimati",
+            recurrenceStart: DateOnly.Parse("2026-06-22"),
+            recurrenceEnd: DateOnly.Parse("2026-06-26"));
+
+        var result = Occurrences(
+            @event,
+            DateTimeOffset.Parse("2026-06-21T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-28T00:00:00+00:00"));
+
+        result.Should().Equal(
+            Period.New(DateTimeOffset.Parse("2026-06-21T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-21T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-22T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-22T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-23T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-23T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-24T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-24T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-25T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-25T19:00:00+00:00")));
+    }
+
     private static Period<DateTimeOffset>[] Occurrences(
         Event<None> @event,
         DateTimeOffset start,
