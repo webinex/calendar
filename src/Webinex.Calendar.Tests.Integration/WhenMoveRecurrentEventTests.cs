@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Webinex.Asky;
 using Webinex.Calendar.Extensions;
+using Webinex.Calendar.MicrosoftGraph;
 using Webinex.Calendar.Tests.Integration.Common;
 using Webinex.Calendar.Tests.Integration.Setups;
 
@@ -161,6 +162,105 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
 
         var occurrenceAdjustment = await Calendar.ByIdAsync<OccurrenceAdjustment<EventData>>(tuesdayOccurrence.Id);
         occurrenceAdjustment.Should().BeNull();
+    }
+
+    [Test]
+    public async Task WhenMoveThirdDailyPrevDayOffsetOccurrenceAsGroup_ShouldMoveFollowingOccurrences()
+    {
+        var firstOccurrence = DateTimeOffset.Parse("2026-06-20T18:00:00+00:00"); // 21 Jun 2026 08:00 Kiritimati
+
+        var @event = Event.Factory.MGDaily(
+            Period.New(firstOccurrence, firstOccurrence.AddHours(1)),
+            "Pacific/Kiritimati",
+            EventData.Test());
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var searchPeriod = Period.New(
+            DateTimeOffset.Parse("2026-06-20T17:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-24T21:00:00+00:00"));
+
+        var eventsBefore = (await Calendar.OccurrencesAsync(searchPeriod))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+        var thirdOccurrence = eventsBefore.ElementAt(2);
+
+        thirdOccurrence.Period.Should().Be(Period.New(
+            DateTimeOffset.Parse("2026-06-22T18:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-22T19:00:00+00:00")));
+
+        await Calendar.UpdateOccurenceAsync(new UpdateOccurrenceArgs<EventData>(
+            thirdOccurrence.Id,
+            period: new Optional<Period<DateTimeOffset>>(Period.New(
+                DateTimeOffset.Parse("2026-06-22T19:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-22T20:00:00+00:00"))),
+            recurrence: new Optional<Recurrence>(@event.Recurrence!.WithPeriod(DateOnly.Parse("2026-06-23"), null)),
+            behavior: OccurenceUpdateBehavior.Group));
+        await DbContext.SaveChangesAsync();
+
+        var eventsAfter = (await Calendar.OccurrencesAsync(searchPeriod))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+
+        eventsAfter.Select(x => x.Period).Should().Equal(
+            Period.New(DateTimeOffset.Parse("2026-06-20T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-20T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-21T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-21T19:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-22T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-22T20:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-23T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-23T20:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-24T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-24T20:00:00+00:00")));
+
+        var recurrentEvents = await Calendar.GetAllAsync<Event<EventData>>(null, null, null);
+        recurrentEvents.Should().ContainSingle(x =>
+            x.Period.Start == DateTimeOffset.Parse("2026-06-22T19:00:00+00:00") &&
+            x.Recurrence!.MGRecurrence!.Period.Start == DateOnly.Parse("2026-06-23"));
+    }
+
+    [Test]
+    public async Task WhenMoveFirstActualNegaviteOffsetToPrevDayOccurrenceAsGroup_ShouldNotEndParentBeforeItsFirstOccurrence()
+    {
+        var period = Period.New(
+            DateTimeOffset.Parse("2026-06-22T18:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-22T19:00:00+00:00"));
+        var recurrence = new Recurrence(
+            new MGRecurrence(
+                new MGRecurrencePeriod(DateOnly.Parse("2026-06-22"), DateOnly.Parse("2026-06-23")),
+                MGRecurrencePattern.Weekly([
+                    DayOfWeek.Monday,
+                    DayOfWeek.Tuesday,
+                    DayOfWeek.Wednesday,
+                    DayOfWeek.Thursday,
+                    DayOfWeek.Friday,
+                    DayOfWeek.Saturday,
+                    DayOfWeek.Sunday,
+                ])));
+        var @event = Event.New(period, "Pacific/Kiritimati", EventData.Test(), recurrence);
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var occurrenceId = new OccurrenceId(@event.Id, DateTimeOffset.Parse("2026-06-22T18:00:00+00:00")).ToString();
+
+        await Calendar.UpdateOccurenceAsync(new UpdateOccurrenceArgs<EventData>(
+            occurrenceId,
+            period: new Optional<Period<DateTimeOffset>>(Period.New(
+                DateTimeOffset.Parse("2026-06-22T19:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-22T20:00:00+00:00"))),
+            timeZone: new Optional<string>("Pacific/Kiritimati"),
+            recurrence: new Optional<Recurrence>(recurrence.WithPeriod(DateOnly.Parse("2026-06-23"), null)),
+            behavior: OccurenceUpdateBehavior.Group));
+        await DbContext.SaveChangesAsync();
+
+        var result = (await Calendar.OccurrencesAsync(
+                DateTimeOffset.Parse("2026-06-22T00:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-24T21:00:00+00:00")))
+            .OrderBy(x => x.Period.Start)
+            .ToArray();
+
+        result.Select(x => x.Period).Should().Equal(
+            Period.New(DateTimeOffset.Parse("2026-06-22T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-22T20:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-23T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-23T20:00:00+00:00")),
+            Period.New(DateTimeOffset.Parse("2026-06-24T19:00:00+00:00"), DateTimeOffset.Parse("2026-06-24T20:00:00+00:00")));
     }
 
     [Test]

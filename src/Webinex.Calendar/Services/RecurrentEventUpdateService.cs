@@ -113,7 +113,7 @@ internal class RecurrentEventUpdateService<TData>
 
         private bool IsFirstOccurence()
         {
-            return ParentEvent.Recurrence!.StartDate() == Args.Id.Start.ToDateOnly(ParentEvent.TimeZone);
+            return ParentEvent.FirstOccurrence().Start == Args.Id.Start;
         }
 
         private DateOnly? EndDateOfAffectedRecurrentEvents()
