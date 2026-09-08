@@ -64,7 +64,10 @@ public static class RecurrenceCalculator
         var eventPeriodZoned = @event.Period.InZone(@event.TimeZone);
         var eventRecurrencePeriodEndZoned =
             @event.Recurrence!.MGRecurrence!.Period.End?.ToLocalDateTime().ToDateTimeUnspecified();
-        var endZoned = eventRecurrencePeriodEndZoned?.AddDays(1) ?? CalendarConstants.MAX_DATE_TIME.AddDays(1);
+        // iCalendar treats UNTIL as inclusive. Keep it immediately before the next local date so an
+        // occurrence at midnight on that next date is not emitted.
+        var endZoned = eventRecurrencePeriodEndZoned?.AddDays(1).AddMilliseconds(-1) ??
+                       CalendarConstants.MAX_DATE_TIME.AddDays(1);
 
         var pattern = MGRecurrencePatternConverter.ConvertToIcal(@event.Recurrence!.MGRecurrence!.Pattern, endZoned);
 

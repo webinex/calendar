@@ -278,6 +278,31 @@ public class RecurrenceCalculatorTests
             Period.New(DateTimeOffset.Parse("2026-06-25T18:00:00+00:00"), DateTimeOffset.Parse("2026-06-25T19:00:00+00:00")));
     }
 
+    [Test]
+    public void OccurrencesAndEffectiveEnd_WhenDailyAvailabilityEndsAtLocalMidnight_ShouldNotIncludeNextDay()
+    {
+        var @event = Recurrent(
+            Period.New(
+                DateTimeOffset.Parse("2026-09-08T04:00:00+00:00"),
+                DateTimeOffset.Parse("2026-09-08T06:00:00+00:00")),
+            MGRecurrencePattern.Daily(),
+            "America/Indiana/Indianapolis",
+            recurrenceStart: DateOnly.Parse("2026-09-08"),
+            recurrenceEnd: DateOnly.Parse("2026-09-08"));
+
+        @event.Effective().End.Should().Be(DateTimeOffset.Parse("2026-09-08T06:00:00+00:00"));
+
+        var result = Occurrences(
+            @event,
+            DateTimeOffset.Parse("2026-09-06T04:00:00+00:00"),
+            DateTimeOffset.Parse("2026-09-13T04:00:00+00:00"));
+
+        result.Should().Equal(
+            Period.New(
+                DateTimeOffset.Parse("2026-09-08T04:00:00+00:00"),
+                DateTimeOffset.Parse("2026-09-08T06:00:00+00:00")));
+    }
+
     private static Period<DateTimeOffset>[] Occurrences(
         Event<None> @event,
         DateTimeOffset start,

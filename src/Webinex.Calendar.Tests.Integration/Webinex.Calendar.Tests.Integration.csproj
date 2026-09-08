@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Webinex.Calendar.Abstractions\Webinex.Calendar.Abstractions.csproj" />
+    <ProjectReference Include="..\Webinex.Calendar.Availabilities.Abstractions\Webinex.Calendar.Availabilities.Abstractions.csproj" />
+    <ProjectReference Include="..\Webinex.Calendar.Availabilities\Webinex.Calendar.Availabilities.csproj" />
     <ProjectReference Include="..\Webinex.Calendar.EntityFramework\Webinex.Calendar.EntityFramework.csproj" />
     <ProjectReference Include="..\Webinex.Calendar\Webinex.Calendar.csproj" />
   </ItemGroup>

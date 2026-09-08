@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Webinex.Asky;
+using Webinex.Calendar.Availabilities;
 using Webinex.Calendar.EntityFramework;
 
 namespace Webinex.Calendar.Tests.Integration.Setups;
@@ -25,9 +26,13 @@ public class IntegrationTestsBase
         services
             .AddScoped<TestDbContext>(_ => new TestDbContext())
             .AddCalendar<EventData>(x => x
+                .UseDbContext<TestDbContext>())
+            .AddAvailability<AvailabilityData>(x => x
                 .UseDbContext<TestDbContext>());
 
-        services.AddSingleton<IAskyFieldMap<EventData>, EventDataAskyFieldMap>();
+        services
+            .AddSingleton<IAskyFieldMap<EventData>, EventDataAskyFieldMap>()
+            .AddSingleton<IAskyFieldMap<AvailabilityData>, AvailabilityDataAskyFieldMap>();
 
         _services = services.BuildServiceProvider();
 
