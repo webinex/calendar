@@ -33,5 +33,23 @@ public class TestDbContext : DbContext
                     n => n.Property(e => e.Value).HasColumnName("Data_NValue").HasMaxLength(250));
                 data.Property(x => x.Name).HasColumnName("Data_Name").HasMaxLength(250);
             });
+
+        model.AddEvent<AvailabilityData>(
+            schemaName: SCHEMA_NAME,
+            tableName: "AvailabilityEvents",
+            configureData: ConfigureAvailabilityData);
+
+        model.AddRecurrentEvent<AvailabilityData>(
+            schemaName: SCHEMA_NAME,
+            tableName: "AvailabilityRecurrentEvents",
+            configureData: ConfigureAvailabilityData);
+    }
+
+    private static void ConfigureAvailabilityData<TOwner>(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.OwnedNavigationBuilder<TOwner, AvailabilityData> data)
+        where TOwner : class
+    {
+        data.Property(x => x.HostId).HasColumnName("Data_HostId").HasMaxLength(250);
+        data.Property(x => x.TenantId).HasColumnName("Data_TenantId").HasMaxLength(250);
     }
 }
