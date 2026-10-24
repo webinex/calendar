@@ -47,7 +47,7 @@ public class OccurrenceCalculator<TData>
     {
         IEventEntityBase[] entities = adjustment == null ? [@event] : [@event, adjustment];
         return new OccurrenceCalculator<TData>(Period.New(id.Start, id.Start.AddMinutes(1)), entities).Calculate()
-            .First();
+            .First(x => x.Id == id.ToString());
     }
 
     public static bool TryCalculateOccurrenceAdjustment(

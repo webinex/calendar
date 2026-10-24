@@ -14,6 +14,9 @@ public static class RecurrenceCalculator
     {
         var eventPeriodZoned = @event.Period.InZone(@event.TimeZone);
         var inZoned = @in.InZone(@event.TimeZone);
+        var searchStart = @in.Start > @event.Period.End
+            ? @in.Start.ToUniversalTime().Subtract(@event.Period.Duration())
+            : @event.Period.Start;
         var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified().AddDays(1) ??
                        DateTime.MaxValue;
 
@@ -32,7 +35,7 @@ public static class RecurrenceCalculator
         calendar.Events.Add(calendarEvent);
 
         var occurrences = calendar.GetOccurrencesEnumerable(
-            inZoned.Start.ToDateTimeUnspecified(),
+            searchStart.ToLocalDateTime(@event.TimeZone).ToDateTimeUnspecified(),
             // We use .AddMilliseconds(-1) to avoid match events by inclusive end
             // For Ical period of 18:00 - 19:00 will match with event which starts at 19:00
             inZoned.End?.ToDateTimeUnspecified().AddMilliseconds(-1));
