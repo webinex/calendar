@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using NUnit.Framework;
-using Webinex.Calendar.Common;
 
 namespace Webinex.Calendar.Tests.RepeatEventCalculatorTests;
 
@@ -13,7 +12,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("6:01"))
             .WithDayOfMonthMatch(timeOfTheDay: "6:00", duration: "1:00", dayOfMonth: 1)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
     }
 
     [Test]
@@ -22,7 +21,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC, JAN1_2023_UTC.Add("0:00:00.001"))
             .WithDayOfMonthMatch(timeOfTheDay: "6:00", duration: "1:00", dayOfMonth: 2)
-            .ToBeEquivalent(Array.Empty<Period>());
+            .ToBeEquivalent(Array.Empty<Period<DateTimeOffset>>());
     }
 
     [Test]
@@ -31,7 +30,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.Add("7:00"), JAN1_2023_UTC.Add("7:01"))
             .WithDayOfMonthMatch("6:00", "1:00", dayOfMonth: 1)
-            .ToBeEquivalent(Array.Empty<Period>());
+            .ToBeEquivalent(Array.Empty<Period<DateTimeOffset>>());
     }
 
     [Test]
@@ -40,7 +39,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC.AddDays(-1), JAN1_2023_UTC.Add("6:01"))
             .WithDayOfMonthMatch(timeOfTheDay: "6:00", duration: "1:00", dayOfMonth: 1)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")));
     }
 
     [Test]
@@ -50,8 +49,8 @@ public class RepeatEventCalculatorTests_DayOfMonth
             .WithRange(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.AddMonths(1).Add("6:01"))
             .WithDayOfMonthMatch(timeOfTheDay: "6:00", duration: "1:00", dayOfMonth: 1)
             .ToBeEquivalent(
-                new Period(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
-                new Period(JAN1_2023_UTC.AddMonths(1).Add("6:00"), JAN1_2023_UTC.AddMonths(1).Add("7:00")));
+                Period.New(JAN1_2023_UTC.Add("6:00"), JAN1_2023_UTC.Add("7:00")),
+                Period.New(JAN1_2023_UTC.AddMonths(1).Add("6:00"), JAN1_2023_UTC.AddMonths(1).Add("7:00")));
     }
 
     [Test]
@@ -60,7 +59,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
         new RepeatEventCalculatorScenario()
             .WithRange(JAN1_2023_UTC, JAN1_2023_UTC.Add("0:01"))
             .WithDayOfMonthMatch(timeOfTheDay: "23:00", duration: "1:01", dayOfMonth: 31)
-            .ToBeEquivalent(new Period(JAN1_2023_UTC.AddHours(-1), JAN1_2023_UTC.AddMinutes(1)));
+            .ToBeEquivalent(Period.New(JAN1_2023_UTC.AddHours(-1), JAN1_2023_UTC.AddMinutes(1)));
     }
     
     [Test]
@@ -70,7 +69,7 @@ public class RepeatEventCalculatorTests_DayOfMonth
             .WithRange(DateTimeOffset.Parse("2024-08-23T00:00:00+000"), DateTimeOffset.Parse("2024-08-28T00:00:00+000"))
             .WithDayOfMonthMatch(timeOfTheDay: "00:00", duration: "1:00", dayOfMonth: 26, "Europe/London")
             .ToBeEquivalent(
-                new Period(
+                Period.New(
                     DateTimeOffset.Parse("2024-08-25T23:00:00+000"),
                     DateTimeOffset.Parse("2024-08-26T00:00:00+000")));
     }

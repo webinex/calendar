@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
+using Webinex.Calendar.MicrosoftGraph;
 
 namespace Webinex.Calendar.Example.Controllers;
 
@@ -30,43 +29,32 @@ public class CreateEventRequestDto : IValidatableObject
         if (!IsOneTimeEvent())
             throw new InvalidOperationException();
         
-        return Event<EventData>.New(new Period(Start, End!.Value), new EventData(Title));
+        return Event.New(Period.New(Start, End!.Value), TimeZoneInfo.Utc.Id, new EventData(Title));
     }
 
-    public RecurrentEvent<EventData> ToRecurrentEvent()
+    public Event<EventData> ToRecurrentEvent()
     {
         if (!IsRecurrentEvent())
             throw new InvalidOperationException();
 
-        return Type switch
+        var start = new DateTimeOffset(Start.UtcDateTime.Date, TimeSpan.Zero)
+            .AddMinutes(TimeOfTheDayUtcMinutes!.Value);
+        // End is exclusive in the request; Graph recurrence uses an inclusive local date.
+        var until = End.HasValue ? DateOnly.FromDateTime(End.Value.UtcDateTime.AddTicks(-1)) : (DateOnly?)null;
+        var pattern = Type switch
         {
-            CreateEventRequestType.RepeatInterval => RecurrentEvent<EventData>.NewInterval(
-                Start.AddMinutes(TimeOfTheDayUtcMinutes!.Value),
-                End,
-                IntervalMinutes!.Value,
-                DurationMinutes!.Value,
-                new EventData(Title)),
-
-            CreateEventRequestType.RepeatWeekday => RecurrentEvent<EventData>.NewWeekday(
-                Start,
-                End,
-                TimeOfTheDayUtcMinutes!.Value,
-                DurationMinutes!.Value,
-                Weekdays!.Select(x => new Weekday(x)).ToArray(),
-                TimeZoneInfo.Utc.Id,
-                new EventData(Title)),
-
-            CreateEventRequestType.RepeatDayOfMonth => RecurrentEvent<EventData>.NewDayOfMonth(
-                Start,
-                End,
-                TimeOfTheDayUtcMinutes!.Value,
-                DurationMinutes!.Value,
-                new DayOfMonth(DayOfMonth!.Value),
-                TimeZoneInfo.Utc.Id,
-                new EventData(Title)),
-
+            CreateEventRequestType.RepeatInterval => MGRecurrencePattern.Daily(IntervalMinutes!.Value / (24 * 60)),
+            CreateEventRequestType.RepeatWeekday => MGRecurrencePattern.Weekly(
+                Weekdays!.Select(x => Enum.Parse<DayOfWeek>(x, ignoreCase: true))),
+            CreateEventRequestType.RepeatDayOfMonth => MGRecurrencePattern.AbsoluteMonthly(DayOfMonth!.Value),
             _ => throw new ArgumentOutOfRangeException(),
         };
+
+        return Event.New(
+            Period.New(start, start.AddMinutes(DurationMinutes!.Value)),
+            TimeZoneInfo.Utc.Id,
+            new EventData(Title),
+            new Recurrence(new MGRecurrence(new MGRecurrencePeriod(DateOnly.FromDateTime(start.UtcDateTime), until), pattern)));
     }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -93,6 +81,8 @@ public class CreateEventRequestDto : IValidatableObject
         {
             if (!IntervalMinutes.HasValue)
                 return Failed("IntervalMinutes might not be null");
+            if (IntervalMinutes.Value < 24 * 60 || IntervalMinutes.Value % (24 * 60) != 0)
+                return Failed("IntervalMinutes must be a positive whole number of days (multiples of 1440).");
         }
 
         if (IsRecurrentEvent())

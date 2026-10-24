@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - version/*
+  pull_request:
+    branches:
+      - main
+      - version/*
+
+jobs:
+  build-dotnet:
+    name: Build & Test .NET
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: ./src/global.json
+
+      - name: Restore
+        working-directory: src
+        run: dotnet restore Webinex.Calendar.sln
+
+      - name: Build
+        working-directory: src
+        run: dotnet build Webinex.Calendar.sln --configuration Release --no-restore
+
+      - name: Test
+        working-directory: src
+        run: dotnet test Webinex.Calendar.Tests/Webinex.Calendar.Tests.csproj --configuration Release --no-build --verbosity normal

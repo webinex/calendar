@@ -15,15 +15,18 @@ public class EventRepository<TData> : IEventRepository<TData>
     private readonly IAskyFieldMap<EventRow<TData>> _eventRowFieldMap;
     private readonly IAskyFieldMap<RecurrentEventRow<TData>> _recurrentEventRowFieldMap;
     private readonly ConcurrentDictionary<string, EventCacheEntry<TData>> _cache = new();
+    private readonly EventQueryOptimization<TData>? _optimization;
 
     public EventRepository(
         ICalendarDbContextProvider<TData> dbContextProvider,
         IAskyFieldMap<EventRow<TData>> eventRowFieldMap,
-        IAskyFieldMap<RecurrentEventRow<TData>> recurrentEventRowFieldMap)
+        IAskyFieldMap<RecurrentEventRow<TData>> recurrentEventRowFieldMap,
+        EventQueryOptimization<TData>? optimization = null)
     {
         _dbContextProvider = dbContextProvider;
         _eventRowFieldMap = eventRowFieldMap;
         _recurrentEventRowFieldMap = recurrentEventRowFieldMap;
+        _optimization = optimization;
     }
 
     private DbContext DbContext => _dbContextProvider.Value;
@@ -155,9 +158,11 @@ public class EventRepository<TData> : IEventRepository<TData>
     {
         dataFilterRule = dataFilterRule?.Replace(new RenameFieldIdFilterRuleVisitor(x => $"{Event.DATA_FIELD}.{x}"));
 
-        var recurrentEventRows = await MatchRecurrentEventRowsAsync(period, dataFilterRule);
+        var recurrentEventRows = _optimization?.NoRecurrentEvents != true ? await MatchRecurrentEventRowsAsync(period, dataFilterRule) : [];
         var eventRows = await MatchEventRowsAsync(period, dataFilterRule, recurrentEventRows);
-        recurrentEventRows = await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows);
+        recurrentEventRows = _optimization?.NoRecurrentEvents != true
+            ? await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows)
+            : [];
         return eventRows.Select(Instance).Concat(recurrentEventRows.Select(Instance)).ToArray();
     }
 
@@ -181,11 +186,13 @@ public class EventRepository<TData> : IEventRepository<TData>
         IReadOnlyCollection<RecurrentEventRow<TData>> recurrentEventRows)
     {
         var queryable = Events
-            .Where(x => x.Effective.Start < period.End)
-            // optimizes index as explicitly define a range for an effective.start
-            // we assume a limitation of max event duration is 24h and max move is 72h
-            .Where(x => x.Effective.Start >= period.Start.AddDays(-4))
-            .Where(x => x.Effective.End > period.Start);
+            .Where(x => x.Effective.Start < period.End);
+
+        if (_optimization?.MaxStartOffset != null)
+            queryable = queryable.Where(x =>
+                x.Effective.Start >= period.Start.Subtract(_optimization.MaxStartOffset.Value));
+
+        queryable = queryable.Where(x => x.Effective.End > period.Start);
 
         if (dataFilterRule != null)
         {
@@ -213,7 +220,7 @@ public class EventRepository<TData> : IEventRepository<TData>
             await RecurrentEvents.Where(x => missedRecurrentEventIds.Contains(x.Id)).ToArrayAsync();
         return recurrentEventRows.Concat(missedRecurrentEventRows).ToArray();
     }
- 
+
     public virtual async Task<IReadOnlyCollection<T>> GetAllAsync<T>(
         FilterRule? filterRule = null,
         IEnumerable<SortRule>? sortRules = null,
@@ -250,7 +257,7 @@ public class EventRepository<TData> : IEventRepository<TData>
     {
         sortRules = sortRules?.ToArray();
         var result = new List<IEventEntityBase>();
-        
+
         if (type.HasFlag(EventEntityType.OneTimeEvent) || type.HasFlag(EventEntityType.OccurrenceAdjustment))
         {
             var eventRows = await Queryable<EventRow<TData>>(filterRule, sortRules, pagingRule, readOnly)

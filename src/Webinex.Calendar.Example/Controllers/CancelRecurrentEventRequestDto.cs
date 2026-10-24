@@ -2,6 +2,6 @@
 
 public class CancelRecurrentEventRequestDto
 {
-    public Guid RecurrentEventId { get; init; }
+    public string RecurrentEventId { get; init; } = null!;
     public DateTimeOffset Since { get; init; }
 }
