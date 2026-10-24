@@ -54,8 +54,8 @@ public class EventRepository<TData> : IEventRepository<TData>
         var eventIds = ids.Where(EventId.IsOneTime).Concat(ids.Where(OccurrenceId.IsValid)).Distinct().ToArray();
         var recurrentEventIds = ids.Where(EventId.IsRecurrent);
 
-        var eventRows = await Events.Where(x => eventIds.Contains(x.Id)).ToArrayAsync();
-        var recurrentEventRows = await RecurrentEvents.Where(x => recurrentEventIds.Contains(x.Id)).ToArrayAsync();
+        var eventRows = await Events.Where(x => Enumerable.Contains(eventIds, x.Id)).ToArrayAsync();
+        var recurrentEventRows = await RecurrentEvents.Where(x => Enumerable.Contains(recurrentEventIds, x.Id)).ToArrayAsync();
         return eventRows.Select(Instance).Concat(recurrentEventRows.Select(Instance)).OfType<T>().ToArray();
     }
 
@@ -215,7 +215,7 @@ public class EventRepository<TData> : IEventRepository<TData>
         var existingRecurrentEventIds = recurrentEventRows.Select(x => x.Id).ToArray();
         var missedRecurrentEventIds = requiredRecurrentEventIds.Except(existingRecurrentEventIds).ToArray();
         var missedRecurrentEventRows =
-            await RecurrentEvents.Where(x => missedRecurrentEventIds.Contains(x.Id)).ToArrayAsync();
+            await RecurrentEvents.Where(x => Enumerable.Contains(missedRecurrentEventIds, x.Id)).ToArrayAsync();
         return recurrentEventRows.Concat(missedRecurrentEventRows).ToArray();
     }
 
@@ -302,7 +302,7 @@ public class EventRepository<TData> : IEventRepository<TData>
         if (!ids.Any()) return [];
 
         var result = await DbContext.Set<RecurrentEventRow<TData>>()
-            .Where(x => ids.Contains(x.Group.Id))
+            .Where(x => Enumerable.Contains(ids, x.Group.Id))
             .GroupBy(x => x.Group.Id)
             .Select(x => new
             {
