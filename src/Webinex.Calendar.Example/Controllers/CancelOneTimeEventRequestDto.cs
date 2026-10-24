@@ -2,5 +2,5 @@
 
 public class CancelOneTimeEventRequestDto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = null!;
 }

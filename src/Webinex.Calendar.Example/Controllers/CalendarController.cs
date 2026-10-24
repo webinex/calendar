@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Webinex.Calendar.Common;
-using Webinex.Calendar.Events;
 
 namespace Webinex.Calendar.Example.Controllers;
 
@@ -20,7 +18,7 @@ public class CalendarController : ControllerBase
     [HttpGet]
     public async Task<Occurrence<EventData>[]> GetAllAsync(DateTimeOffset from, DateTimeOffset to)
     {
-        return await _calendar.GetCalculatedAsync(from, to, queryOptions: QueryOptions.TryCache);
+        return (await _calendar.OccurrencesAsync(from, to)).ToArray();
     }
 
     [HttpPost]
@@ -30,10 +28,10 @@ public class CalendarController : ControllerBase
             return BadRequest(ModelState);
 
         if (request.IsRecurrentEvent())
-            await _calendar.Recurrent.AddAsync(request.ToRecurrentEvent());
+            await _calendar.AddAsync(request.ToRecurrentEvent());
 
         if (request.IsOneTimeEvent())
-            await _calendar.OneTime.AddAsync(request.ToOneTimeEvent());
+            await _calendar.AddAsync(request.ToOneTimeEvent());
         
         await _dbContext.SaveChangesAsync();
         return Ok();
@@ -45,9 +43,8 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var recurrentEvent = await _calendar.Recurrent.GetAsync(request.RecurrentEventId);
-        await _calendar.Recurrent.MoveAsync(recurrentEvent!, request.EventStart,
-            new Period(request.MoveToStart, request.MoveToEnd));
+        var id = new OccurrenceId(request.RecurrentEventId, request.EventStart).ToString();
+        await _calendar.MoveAsync(id, Period.New(request.MoveToStart, request.MoveToEnd));
         await _dbContext.SaveChangesAsync();
 
         return Ok();
@@ -59,8 +56,8 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var recurrentEvent = await _calendar.Recurrent.GetAsync(request.RecurrentEventId);
-        await _calendar.Recurrent.CancelAppearanceAsync(recurrentEvent!, request.EventStart);
+        var id = new OccurrenceId(request.RecurrentEventId, request.EventStart).ToString();
+        await _calendar.CancelOccurrenceAsync(id);
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
@@ -71,11 +68,11 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var @event = await _calendar.OneTime.GetAsync(request.Id);
+        var @event = await _calendar.ByIdAsync<Event<EventData>>(request.Id);
         if (@event == null)
             return NotFound(request.Id);
         
-        await _calendar.OneTime.CancelAsync(@event);
+        await _calendar.CancelOccurrenceAsync(new OccurrenceId(@event.Id, @event.Period.Start).ToString());
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
@@ -86,7 +83,8 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        await _calendar.Recurrent.CancelAsync(request.RecurrentEventId, request.Since);
+        var id = new OccurrenceId(request.RecurrentEventId, request.Since).ToString();
+        await _calendar.CancelOccurrenceAsync(id, OccurenceUpdateBehavior.Group);
         await _dbContext.SaveChangesAsync();
         return Ok();
     }

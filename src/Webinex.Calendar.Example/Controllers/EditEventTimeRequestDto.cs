@@ -2,7 +2,7 @@
 
 public class EditEventTimeRequestDto
 {
-    public Guid RecurrentEventId { get; init; }
+    public string RecurrentEventId { get; init; } = null!;
     public DateTimeOffset EventStart { get; init; }
     public DateTimeOffset MoveToStart { get; init; }
     public DateTimeOffset MoveToEnd { get; init; }

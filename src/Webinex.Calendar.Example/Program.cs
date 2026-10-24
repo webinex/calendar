@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Webinex.Asky;
 using Webinex.Calendar;
+using Webinex.Calendar.EntityFramework;
 using Webinex.Calendar.Example;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -16,9 +18,8 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddCalendar<EventData>(x => x
-    .AddDbContext<ExampleDbContext>()
-    .AddCache(TimeSpan.FromDays(30), TimeSpan.FromDays(3 * 30), TimeSpan.FromMinutes(15)));
+builder.Services.AddCalendar<EventData>(x => x.UseDbContext<ExampleDbContext>());
+builder.Services.AddSingleton<IAskyFieldMap<EventData>, EventDataAskyFieldMap>();
 
 builder.Services.AddDbContext<ExampleDbContext>(x =>
     x.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
