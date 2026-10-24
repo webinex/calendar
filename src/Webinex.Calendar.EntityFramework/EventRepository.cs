@@ -158,11 +158,9 @@ public class EventRepository<TData> : IEventRepository<TData>
     {
         dataFilterRule = dataFilterRule?.Replace(new RenameFieldIdFilterRuleVisitor(x => $"{Event.DATA_FIELD}.{x}"));
 
-        var recurrentEventRows = _optimization?.NoRecurrentEvents != true ? await MatchRecurrentEventRowsAsync(period, dataFilterRule) : [];
+        var recurrentEventRows = await MatchRecurrentEventRowsAsync(period, dataFilterRule);
         var eventRows = await MatchEventRowsAsync(period, dataFilterRule, recurrentEventRows);
-        recurrentEventRows = _optimization?.NoRecurrentEvents != true
-            ? await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows)
-            : [];
+        recurrentEventRows = await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows);
         return eventRows.Select(Instance).Concat(recurrentEventRows.Select(Instance)).ToArray();
     }
 
@@ -188,9 +186,9 @@ public class EventRepository<TData> : IEventRepository<TData>
         var queryable = Events
             .Where(x => x.Effective.Start < period.End);
 
-        if (_optimization?.MaxStartOffset != null)
+        if (_optimization?.EffectiveStartWindow != null)
             queryable = queryable.Where(x =>
-                x.Effective.Start >= period.Start.Subtract(_optimization.MaxStartOffset.Value));
+                x.Effective.Start >= period.Start.Subtract(_optimization.EffectiveStartWindow.Value));
 
         queryable = queryable.Where(x => x.Effective.End > period.Start);
 
