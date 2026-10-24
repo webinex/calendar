@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-dotnet:
+    name: Publish .NET Packages
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: ./src/global.json
+
+      - name: Publish
+        run: ./scripts/Publish-NugetPackages.ps1 -ApiKey "${{ secrets.NUGET_API_KEY }}"
+        shell: pwsh
