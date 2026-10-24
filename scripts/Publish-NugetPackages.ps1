@@ -10,5 +10,15 @@ function Invoke-PackAndPublishNugetPackages() {
   Publish-LibraryNugetPackage -ApiKey $ApiKey -NotPublishedOnly $true -Project "Webinex.Calendar.All" -Name "Webinex.Calendar"
 }
 
-Invoke-PackAndPublishNugetPackages;
+Push-Location -LiteralPath (Join-Path $PSScriptRoot '..\src')
+try {
+  Write-Host "Build working directory: $(Get-Location)"
+  dotnet --version
+  if ($LASTEXITCODE -ne 0) { exit 1 }
+
+  Invoke-PackAndPublishNugetPackages
+}
+finally {
+  Pop-Location
+}
 exit 0
