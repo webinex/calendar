@@ -36,7 +36,7 @@ public static class CalendarConfigurationExtensions
     public static ICalendarConfiguration UseQueryOptimization(this ICalendarConfiguration configuration, bool enabled)
     {
         return configuration.UseQueryOptimization(enabled
-            ? new EventQueryOptimization()
+            ? EventQueryOptimization.Default
             : EventQueryOptimization.Disable);
     }
 
@@ -52,7 +52,7 @@ public static class CalendarConfigurationExtensions
     private static EventQueryOptimization NewTypedOptimization(Type dataType, EventQueryOptimization value)
     {
         var type = typeof(EventQueryOptimization<>).MakeGenericType(dataType);
-        var newMethod = type.GetMethod(nameof(EventQueryOptimization<>.New), BindingFlags.Static | BindingFlags.Public)!;
+        var newMethod = type.GetMethod(nameof(EventQueryOptimization<object>.New), BindingFlags.Static | BindingFlags.Public)!;
         return (EventQueryOptimization)newMethod.Invoke(null, [value])!;
     }
 }
