@@ -37,8 +37,7 @@ public static class EventExtensions
             return null;
 
         var tz = DateTimeZoneProviders.Tzdb[@event.TimeZone];
-        var eventPeriodTz = @event.Period.InZone(@event.TimeZone);
-        var endUtc = @event.Recurrence.MGRecurrence!.Period.End.Value.ToLocalDate().At(eventPeriodTz.End.TimeOfDay)
+        var endUtc = @event.Recurrence.MGRecurrence!.Period.End.Value.ToLocalDate().PlusDays(1).AtMidnight()
             .InZoneLeniently(tz).ToDateTimeOffset().ToUniversalTime();
         var period = new OpenPeriod<DateTimeOffset>(@event.Period.Start, endUtc);
         return RecurrenceCalculator.Occurrences(@event, period).LastOrDefault()?.End;
