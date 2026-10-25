@@ -17,7 +17,7 @@ public static class RecurrenceCalculator
         var searchStart = @in.Start > @event.Period.End
             ? @in.Start.ToUniversalTime().Subtract(@event.Period.Duration())
             : @event.Period.Start;
-        var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.InZone(@event.TimeZone).ToDateTimeUnspecified().AddDays(1) ??
+        var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.ToDateTime(TimeOnly.MaxValue) ??
                        DateTime.MaxValue;
 
         var pattern = MGRecurrencePatternConverter.ConvertToIcal(@event.Recurrence!.MGRecurrence!.Pattern, endZoned);
