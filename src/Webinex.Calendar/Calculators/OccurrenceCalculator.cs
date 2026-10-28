@@ -18,10 +18,15 @@ public class OccurrenceCalculator<TData>
         _adjustments = entries.OfType<OccurrenceAdjustment<TData>>().ToArray();
     }
 
+    /// <summary>
+    ///     Returns occurrences which actual period (after move) intersects period,
+    ///     including occurrences moved into period and excluding moved out of it
+    /// </summary>
     public IReadOnlyCollection<Occurrence<TData>> Calculate()
     {
         return _events.Select(CalculateOneTime)
             .Concat(_recurrentEvents.SelectMany(CalculateRecurrent))
+            .Where(x => x.Period.Intersects(_period))
             .OrderBy(x => x.Period.Start)
             .ToArray();
     }
@@ -31,12 +36,34 @@ public class OccurrenceCalculator<TData>
         Event<TData> @event,
         OccurrenceAdjustment<TData>? adjustment)
     {
-        return @event.Recurrence != null ? CalculateRecurrent(id, @event, adjustment) : CalculateOneTime(@event);
+        return TryCalculate(id, @event, adjustment) ??
+               throw new InvalidOperationException(
+                   $"Unable to calculate occurrence {id} for event {@event.Id}. See exception Data for more details.")
+               {
+                   Data =
+                   {
+                       ["id"] = id,
+                       ["event"] = @event,
+                       ["adjustment"] = adjustment,
+                   }
+               };
+    }
+
+    /// <summary>
+    ///     Returns null when recurrent event doesn't produce occurrence with specified id
+    ///     (occurrence cancelled or id doesn't match recurrence anymore)
+    /// </summary>
+    public static Occurrence<TData>? TryCalculate(
+        OccurrenceId id,
+        Event<TData> @event,
+        OccurrenceAdjustment<TData>? adjustment)
+    {
+        return @event.Recurrence != null ? TryCalculateRecurrent(id, @event, adjustment) : CalculateOneTime(@event);
     }
 
     public static Occurrence<TData> CalculateOneTime(Event<TData> @event)
     {
-        var occurrenceId = new OccurrenceId(@event.Id, @event.Period.Start).ToString();
+        var occurrenceId = OccurrenceId.OneTime(@event.Id).ToString();
         return new Occurrence<TData>(occurrenceId, @event.Group, @event.Period, @event.Data);
     }
 
@@ -45,9 +72,33 @@ public class OccurrenceCalculator<TData>
         Event<TData> @event,
         OccurrenceAdjustment<TData>? adjustment)
     {
+        return TryCalculateRecurrent(id, @event, adjustment) ??
+               throw new InvalidOperationException(
+                   $"Unable to calculate occurrence {id} for event {@event.Id}. See exception Data for more details.")
+               {
+                   Data =
+                   {
+                       ["id"] = id,
+                       ["event"] = @event,
+                       ["adjustment"] = adjustment,
+                   }
+               };
+    }
+
+    private static Occurrence<TData>? TryCalculateRecurrent(
+        OccurrenceId id,
+        Event<TData> @event,
+        OccurrenceAdjustment<TData>? adjustment)
+    {
+        if (id.Start is null)
+            return null;
+
+        // Moved occurrence is searched in its new position, because Calculate returns only occurrences in period
+        var start = adjustment?.MoveTo?.Start ?? id.Start.Value;
         IEventEntityBase[] entities = adjustment == null ? [@event] : [@event, adjustment];
-        return new OccurrenceCalculator<TData>(Period.New(id.Start, id.Start.AddMinutes(1)), entities).Calculate()
-            .First(x => x.Id == id.ToString());
+        return new OccurrenceCalculator<TData>(Period.New(start, start.AddMinutes(1)), entities)
+            .Calculate()
+            .FirstOrDefault(x => x.Id == id.ToString());
     }
 
     public static bool TryCalculateOccurrenceAdjustment(
@@ -77,7 +128,7 @@ public class OccurrenceCalculator<TData>
     {
         foreach (var period in RecurrenceCalculator.Occurrences(@event, _period.ToOpenPeriod()))
         {
-            var id = new OccurrenceId(@event.Id, period.Start);
+            var id = OccurrenceId.Recurrent(@event.Id, period.Start);
             var adjustment = _adjustments.FirstOrDefault(x => x.Id == id.ToString());
 
             if (adjustment?.Cancelled == true)
@@ -101,7 +152,9 @@ public class OccurrenceCalculator<TData>
         Event<TData> @event,
         Occurrence<TData>[] occurrences)
     {
-        foreach (var adjustment in _adjustments.Where(x => x.RecurrentEventId == @event.Id && !x.Cancelled))
+        // Adjustments without MoveTo stay on original period, so they can't be moved into period
+        foreach (var adjustment in _adjustments.Where(x =>
+                     x.RecurrentEventId == @event.Id && !x.Cancelled && x.MoveTo != null))
         {
             if (occurrences.Any(x => x.Id == adjustment.Id))
                 continue;

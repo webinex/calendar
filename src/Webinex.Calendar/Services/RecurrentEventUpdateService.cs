@@ -41,10 +41,10 @@ internal class RecurrentEventUpdateService<TData>
         IEventEntityBase[] GroupEvents)
     {
         private Period<DateTimeOffset> NewEventPeriod => Args.Period?.Value ?? Adjustment?.Period ?? Period.New(
-            Args.Id.Start,
-            Args.Id.Start.Add(ParentEvent.Duration()));
+            Args.Id.GetStartOrThrow(),
+            Args.Id.GetStartOrThrow().Add(ParentEvent.Duration()));
 
-        private TimeSpan NewEventGroupOffset => NewEventPeriod.Start - Args.Id.Start + ParentEvent.Group.OffsetTimeSpan();
+        private TimeSpan NewEventGroupOffset => NewEventPeriod.Start - Args.Id.GetStartOrThrow() + ParentEvent.Group.OffsetTimeSpan();
         private EventGroupId NewEventGroupId => new(ParentEvent.Group.Id, NewEventGroupOffset);
         private string NewEventTimeZone => Args.TimeZone?.Value ?? ParentEvent.TimeZone;
         private TData NewEventData => Args.Data?.Value ?? Adjustment?.Data ?? ParentEvent.Data;
@@ -65,7 +65,7 @@ internal class RecurrentEventUpdateService<TData>
 
         private IEnumerable<Operation> MapDeleteSubsequentEventEntitiesOperations()
         {
-            var toDelete = GroupEvents.Where(x => x.Period.Start >= Args.Id.Start && x.Id != ParentEvent.Id).ToArray();
+            var toDelete = GroupEvents.Where(x => x.Period.Start >= Args.Id.GetStartOrThrow() && x.Id != ParentEvent.Id).ToArray();
             return toDelete.Select(Operation.Remove).ToArray();
         }
 
@@ -112,7 +112,7 @@ internal class RecurrentEventUpdateService<TData>
 
         private bool IsFirstOccurence()
         {
-            return ParentEvent.Recurrence!.StartDate() == Args.Id.Start.ToDateOnly(ParentEvent.TimeZone);
+            return ParentEvent.Recurrence!.StartDate() == Args.Id.GetStartOrThrow().ToDateOnly(ParentEvent.TimeZone);
         }
     }
 }

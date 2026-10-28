@@ -39,7 +39,7 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
         await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        var occurrenceId = new OccurrenceId(@event.Id, JAN1_2023_UTC);
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, JAN1_2023_UTC);
         await Calendar.SaveDataAsync(occurrenceId.ToString(), new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
@@ -63,7 +63,7 @@ public class WhenGetAllRecurrentEventsWithDataFilterTests : IntegrationTestsBase
         await Calendar.AddAsync(@event);
         await DbContext.SaveChangesAsync();
 
-        await Calendar.SaveDataAsync(new OccurrenceId(@event.Id, JAN1_2023_UTC).ToString(), new EventData("NEW_NAME"));
+        await Calendar.SaveDataAsync(OccurrenceId.Recurrent(@event.Id, JAN1_2023_UTC).ToString(), new EventData("NEW_NAME"));
         await DbContext.SaveChangesAsync();
 
         var events = await Calendar.OccurrencesAsync(

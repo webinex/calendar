@@ -43,7 +43,7 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var id = new OccurrenceId(request.RecurrentEventId, request.EventStart).ToString();
+        var id = OccurrenceId.Recurrent(request.RecurrentEventId, request.EventStart).ToString();
         await _calendar.MoveAsync(id, Period.New(request.MoveToStart, request.MoveToEnd));
         await _dbContext.SaveChangesAsync();
 
@@ -56,7 +56,7 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var id = new OccurrenceId(request.RecurrentEventId, request.EventStart).ToString();
+        var id = OccurrenceId.Recurrent(request.RecurrentEventId, request.EventStart).ToString();
         await _calendar.CancelOccurrenceAsync(id);
         await _dbContext.SaveChangesAsync();
         return Ok();
@@ -72,7 +72,7 @@ public class CalendarController : ControllerBase
         if (@event == null)
             return NotFound(request.Id);
         
-        await _calendar.CancelOccurrenceAsync(new OccurrenceId(@event.Id, @event.Period.Start).ToString());
+        await _calendar.CancelOccurrenceAsync(OccurrenceId.OneTime(@event.Id).ToString());
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
@@ -83,7 +83,7 @@ public class CalendarController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var id = new OccurrenceId(request.RecurrentEventId, request.Since).ToString();
+        var id = OccurrenceId.Recurrent(request.RecurrentEventId, request.Since).ToString();
         await _calendar.CancelOccurrenceAsync(id, OccurenceUpdateBehavior.Group);
         await _dbContext.SaveChangesAsync();
         return Ok();

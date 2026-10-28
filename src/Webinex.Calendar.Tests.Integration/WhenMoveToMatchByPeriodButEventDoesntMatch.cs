@@ -41,7 +41,7 @@ public class WhenMoveToMatchByPeriodButEventDoesntMatch : IntegrationTestsBase
         _occurrencesBefore = await Calendar.OccurrencesAsync(JAN1_2023_UTC.AddDays(2), JAN1_2023_UTC.AddDays(3));
 
         await Calendar.MoveAsync(
-            new OccurrenceId(_event.Id, JAN1_2023_UTC).ToString(),
+            OccurrenceId.Recurrent(_event.Id, JAN1_2023_UTC).ToString(),
             Period.New(JAN1_2023_UTC.AddDays(2), JAN1_2023_UTC.AddDays(2).AddHours(2)));
         await DbContext.SaveChangesAsync();
         

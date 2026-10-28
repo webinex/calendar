@@ -1,5 +1,8 @@
 ﻿using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Webinex.Asky;
+using Webinex.Calendar.EntityFramework;
 using Webinex.Calendar.Extensions;
 using Webinex.Calendar.Tests.Integration.Setups;
 
@@ -7,6 +10,96 @@ namespace Webinex.Calendar.Tests.Integration;
 
 public class WhenMoveRecurrentEventTests : IntegrationTestsBase
 {
+    [Test]
+    public async Task WhenMoveBackToOriginalPeriod_ShouldRestoreOriginalPeriod()
+    {
+        var originalPeriod = Period.New(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(1));
+        var @event = Event.Factory.MGDaily(originalPeriod, TimeZoneInfo.Utc.Id, EventData.Test(), interval: 7);
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, originalPeriod.Start).ToString();
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+        await Calendar.MoveAsync(occurrenceId, originalPeriod.Move(TimeSpan.FromDays(1)));
+        await DbContext.SaveChangesAsync();
+
+        await Calendar.MoveAsync(occurrenceId, originalPeriod);
+        await DbContext.SaveChangesAsync();
+
+        using var scope = Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendar<EventData>>();
+        var occurrence = await calendar.OccurrenceAsync(occurrenceId);
+        occurrence!.Period.Should().Be(originalPeriod);
+        var occurrences = await calendar.OccurrencesAsync(JAN1_2023_UTC, JAN1_2023_UTC.AddDays(2));
+        occurrences.Should().ContainSingle().Which.Period.Should().Be(originalPeriod);
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+        var rowExists = await dbContext.Set<EventRow<EventData>>().AnyAsync(x => x.Id == occurrenceId);
+        rowExists.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task WhenMoveBackWithData_ShouldKeepAdjustmentWithoutMove()
+    {
+        var originalPeriod = Period.New(JAN1_2023_UTC, JAN1_2023_UTC.AddHours(1));
+        var @event = Event.Factory.MGDaily(originalPeriod, TimeZoneInfo.Utc.Id, EventData.Test(), interval: 7);
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, originalPeriod.Start).ToString();
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+        await Calendar.SaveDataAsync(occurrenceId, new EventData("UPDATED"));
+        await DbContext.SaveChangesAsync();
+        await Calendar.MoveAsync(occurrenceId, originalPeriod.Move(TimeSpan.FromDays(1)));
+        await DbContext.SaveChangesAsync();
+
+        await Calendar.MoveAsync(occurrenceId, originalPeriod);
+        await DbContext.SaveChangesAsync();
+
+        using var scope = Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendar<EventData>>();
+        var occurrence = await calendar.OccurrenceAsync(occurrenceId);
+        occurrence!.Period.Should().Be(originalPeriod);
+        occurrence.Data.Name.Should().Be("UPDATED");
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+        var row = await dbContext.Set<EventRow<EventData>>().SingleAsync(x => x.Id == occurrenceId);
+        row.MoveTo.Should().BeNull();
+        row.Effective.Should().Be(originalPeriod);
+    }
+
+
+    [TestCase(-2)]
+    [TestCase(2)]
+    public async Task WhenMoveExistingAdjustment_ShouldBeVisibleInNewPeriod(int days)
+    {
+        var originalPeriod = Period.New(JAN1_2023_UTC.AddDays(7), JAN1_2023_UTC.AddDays(7).AddHours(1));
+        var @event = Event.Factory.MGDaily(
+            originalPeriod.Move(TimeSpan.FromDays(-7)), TimeZoneInfo.Utc.Id, EventData.Test(), interval: 7);
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, originalPeriod.Start).ToString();
+        var newPeriod = originalPeriod.Move(TimeSpan.FromDays(days));
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+        await Calendar.SaveDataAsync(occurrenceId, new EventData("UPDATED"));
+        await DbContext.SaveChangesAsync();
+
+        await Calendar.MoveAsync(occurrenceId, newPeriod);
+        await DbContext.SaveChangesAsync();
+
+        using var scope = Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendar<EventData>>();
+        var occurrence = await calendar.OccurrenceAsync(occurrenceId);
+        occurrence!.Period.Should().Be(newPeriod);
+        var occurrences = await calendar.OccurrencesAsync(newPeriod.Start, newPeriod.End);
+        occurrences.Should().ContainSingle().Which.Id.Should().Be(occurrenceId);
+        occurrences.Single().Data.Name.Should().Be("UPDATED");
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+        var row = await dbContext.Set<EventRow<EventData>>().SingleAsync(x => x.Id == occurrenceId);
+        row.Effective.Should().Be(Period.New(
+            days < 0 ? newPeriod.Start : originalPeriod.Start,
+            days > 0 ? newPeriod.End : originalPeriod.End));
+    }
+
     [Test]
     public async Task WhenMoveAndBothMatch_ShouldBeMoved()
     {
@@ -95,7 +188,7 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
         eventsBefore.Count.Should().Be(0);
 
         await Calendar.MoveAsync(
-            new OccurrenceId(@event.Id, JAN1_2023_UTC).ToString(),
+            OccurrenceId.Recurrent(@event.Id, JAN1_2023_UTC).ToString(),
             Period.New(JAN1_2023_UTC.AddDays(1), JAN1_2023_UTC.AddDays(1).AddHours(1)));
 
         await DbContext.SaveChangesAsync();
@@ -127,7 +220,7 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
         await DbContext.SaveChangesAsync();
 
         // Act
-        var occurrenceId = new OccurrenceId(@event.Id, movedVisitOriginalStart).ToString();
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, movedVisitOriginalStart).ToString();
 
         await Calendar.MoveAsync(
             occurrenceId,

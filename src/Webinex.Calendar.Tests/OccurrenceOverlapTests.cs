@@ -75,7 +75,7 @@ public class OccurrenceOverlapTests
     public void WhenEarlierOccurrencesOverlapIdLookup_ShouldReturnRequestedOccurrence()
     {
         var @event = CreateWeeklyEvent(durationDays: 31);
-        var id = new OccurrenceId(@event.Id, OverlappingPeriod.Start);
+        var id = OccurrenceId.Recurrent(@event.Id, OverlappingPeriod.Start);
 
         var occurrence = OccurrenceCalculator<EventData>.CalculateRecurrent(id, @event, null);
 
@@ -89,7 +89,7 @@ public class OccurrenceOverlapTests
         var @event = CreateWeeklyEvent(durationDays: 31);
         var originalPeriod = Period.New(OverlappingPeriod.Start, OverlappingPeriod.Start.AddDays(31));
         var movedPeriod = Period.New(originalPeriod.Start.AddDays(1), originalPeriod.End.AddDays(1));
-        var id = new OccurrenceId(@event.Id, originalPeriod.Start);
+        var id = OccurrenceId.Recurrent(@event.Id, originalPeriod.Start);
         var adjustment = OccurrenceAdjustment<EventData>.NewMove(
             @event.Id,
             @event.Group,
