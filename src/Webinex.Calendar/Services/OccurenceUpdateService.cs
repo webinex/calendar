@@ -82,7 +82,10 @@ internal class OccurrenceUpdateService<TData> : IOccurrenceUpdateService<TData>
     {
         if (arg.Period != null) occurrenceAdjustment.Move(arg.Period.Value);
         if (arg.Data != null) occurrenceAdjustment.SetData(arg.Data?.Value);
-        yield return Operation.Update(occurrenceAdjustment);
+
+        yield return occurrenceAdjustment.IsEmpty
+            ? Operation.Remove(occurrenceAdjustment)
+            : Operation.Update(occurrenceAdjustment);
     }
 
     private async Task<IEnumerable<Operation>> MapUpdateNotExistingRecurrentOccurrenceOperationsAsync(
@@ -96,7 +99,7 @@ internal class OccurrenceUpdateService<TData> : IOccurrenceUpdateService<TData>
 
         var newOccurrenceAdjustment = OccurrenceAdjustment<TData>.NewUpdate(
             arg.Id,
-            Period.New(arg.Id.Start, arg.Id.Start.Add(recurrentEvent.Duration())),
+            Period.New(arg.Id.GetStartOrThrow(), arg.Id.GetStartOrThrow().Add(recurrentEvent.Duration())),
             recurrentEvent.Group,
             arg.Data?.Value,
             arg.Period?.Value);

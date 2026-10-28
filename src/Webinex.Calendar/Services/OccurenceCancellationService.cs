@@ -48,7 +48,7 @@ internal class OccurrenceCancellationService<TData> : IOccurrenceCancellationSer
         var eventOperation = MapEndUntilOccurenceRecurrenceEventOperation(@event, id);
         
         return events
-            .Where(x => x.Period.Start >= id.Start)
+            .Where(x => x.Period.Start >= id.GetStartOrThrow())
             .Select(Operation.Remove)
             .Concat([eventOperation]).ToArray();
     }
@@ -59,7 +59,7 @@ internal class OccurrenceCancellationService<TData> : IOccurrenceCancellationSer
      */
     private Operation MapEndUntilOccurenceRecurrenceEventOperation(Event<TData> @event, OccurrenceId id)
     {
-        var endDateNew = id.Start.ToDateOnly(@event.TimeZone).AddDays(-1);
+        var endDateNew = id.GetStartOrThrow().ToDateOnly(@event.TimeZone).AddDays(-1);
         
         if (endDateNew < @event.Recurrence!.StartDate())
             return Operation.Remove(@event);
@@ -105,7 +105,7 @@ internal class OccurrenceCancellationService<TData> : IOccurrenceCancellationSer
         var newOccurrenceAdjustment = OccurrenceAdjustment<TData>.NewCancel(
             recurrentEvent.Id,
             recurrentEvent.Group,
-            Period.New(id.Start, id.Start.Add(recurrentEvent.Duration())));
+            Period.New(id.GetStartOrThrow(), id.GetStartOrThrow().Add(recurrentEvent.Duration())));
         return [Operation.Add(newOccurrenceAdjustment)];
     }
 }

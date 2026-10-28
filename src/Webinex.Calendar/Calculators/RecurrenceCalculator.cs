@@ -14,8 +14,12 @@ public static class RecurrenceCalculator
     {
         var eventPeriodZoned = @event.Period.InZone(@event.TimeZone);
         var inZoned = @in.InZone(@event.TimeZone);
+        // Search start shifted one hour back, because occurrence which falls into DST gap
+        // (e.g. 02:30 on spring forward day) is moved forward by InZoneLeniently in Map, while ICal.Net keeps
+        // original wall time. Without shift such occurrence is out of search range when duration is less than an hour.
+        // Extra occurrences are filtered by @in.Intersects below.
         var searchStart = @in.Start > @event.Period.End
-            ? @in.Start.ToUniversalTime().Subtract(@event.Period.Duration())
+            ? @in.Start.ToUniversalTime().Subtract(@event.Period.Duration()).AddHours(-1)
             : @event.Period.Start;
         var endZoned = @event.Recurrence!.MGRecurrence!.Period.End?.ToDateTime(TimeOnly.MaxValue) ??
                        DateTime.MaxValue;
