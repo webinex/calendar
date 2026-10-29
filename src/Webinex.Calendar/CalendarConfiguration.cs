@@ -49,6 +49,8 @@ internal class CalendarConfiguration : ICalendarConfiguration
         Services.AddTransient(
             typeof(IOccurrenceReadService<>).MakeGenericType(DataType),
             typeof(OccurrenceReadService<>).MakeGenericType(DataType));
+
+        Services.AddSingleton<IRecurrenceCalculator, RecurrenceCalculatorInstance>();
     }
 
     public ICalendarConfiguration AddCache(TimeSpan lt, TimeSpan gte, TimeSpan tick)
