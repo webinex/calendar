@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Reflection;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Webinex.Asky;
@@ -198,6 +199,107 @@ public class WhenMoveRecurrentEventTests : IntegrationTestsBase
 
         eventsAfter.ElementAt(0).Period.Start.Should().Be(JAN1_2023_UTC.AddDays(1));
         eventsAfter.ElementAt(0).Period.End.Should().Be(JAN1_2023_UTC.AddDays(1).AddHours(1));
+    }
+
+    [Test]
+    public async Task WhenMoveBiWeeklyOccurrenceToRequestedPeriod_ShouldMatchOnlyThroughMovedEventRows()
+    {
+        var recurrenceStart = new DateTimeOffset(2026, 11, 1, 17, 0, 0, TimeSpan.Zero);
+        var originalPeriod = Period.New(
+            new DateTimeOffset(2026, 11, 15, 17, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 15, 18, 0, 0, TimeSpan.Zero));
+        var movedPeriod = Period.New(
+            new DateTimeOffset(2026, 11, 22, 17, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 22, 18, 0, 0, TimeSpan.Zero));
+        var requestedPeriod = Period.New(
+            new DateTimeOffset(2026, 11, 22, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 29, 0, 0, 0, TimeSpan.Zero));
+        var @event = Event.Factory.MGWeekly(
+            Period.New(recurrenceStart, recurrenceStart.AddHours(1)),
+            TimeZoneInfo.Utc.Id,
+            EventData.Test(),
+            [DayOfWeek.Sunday],
+            interval: 2);
+
+        await Calendar.AddAsync(@event);
+        await DbContext.SaveChangesAsync();
+
+        var occurrenceId = OccurrenceId.Recurrent(@event.Id, originalPeriod.Start).ToString();
+        await Calendar.MoveAsync(occurrenceId, movedPeriod);
+        await DbContext.SaveChangesAsync();
+
+        var repository = new EventRepository<EventData>(
+            Services.GetRequiredService<ICalendarDbContextProvider<EventData>>(),
+            Services.GetRequiredService<IAskyFieldMap<EventRow<EventData>>>(),
+            Services.GetRequiredService<IAskyFieldMap<RecurrentEventRow<EventData>>>(),
+            EventQueryOptimization<EventData>.New(EventQueryOptimization.Default));
+        var recurrentRows = await DbContext.Set<RecurrentEventRow<EventData>>().ToArrayAsync();
+        var eventRows = await InvokeRepositoryMethodAsync<IReadOnlyCollection<EventRow<EventData>>>(
+            repository,
+            "MatchEventRowsAsync",
+            requestedPeriod,
+            null,
+            recurrentRows);
+        var movedEventRows = await InvokeRepositoryMethodAsync<IReadOnlyCollection<EventRow<EventData>>>(
+            repository,
+            "MatchMovedEventRowsAsync",
+            requestedPeriod,
+            null,
+            recurrentRows);
+
+        eventRows.Should().NotContain(x => x.Id == occurrenceId);
+        movedEventRows.Should().ContainSingle()
+            .Which.Should().Match<EventRow<EventData>>(x =>
+                x.Id == occurrenceId && x.MoveTo == movedPeriod);
+
+        var dataFilterRule = FilterRule.Eq("data.name", "NAME");
+        var filteredRecurrentRows =
+            await InvokeRepositoryMethodAsync<IReadOnlyCollection<RecurrentEventRow<EventData>>>(
+                repository,
+                "MatchRecurrentEventRowsAsync",
+                requestedPeriod,
+                dataFilterRule);
+        filteredRecurrentRows.Should().ContainSingle().Which.Id.Should().Be(@event.Id);
+
+        var filteredEventRows = await InvokeRepositoryMethodAsync<IReadOnlyCollection<EventRow<EventData>>>(
+            repository,
+            "MatchEventRowsAsync",
+            requestedPeriod,
+            dataFilterRule,
+            filteredRecurrentRows);
+        var filteredMovedEventRows =
+            await InvokeRepositoryMethodAsync<IReadOnlyCollection<EventRow<EventData>>>(
+                repository,
+                "MatchMovedEventRowsAsync",
+                requestedPeriod,
+                dataFilterRule,
+                filteredRecurrentRows);
+
+        filteredEventRows.Should().NotContain(x => x.Id == occurrenceId);
+        filteredMovedEventRows.Should().ContainSingle()
+            .Which.Should().Match<EventRow<EventData>>(x =>
+                x.Id == occurrenceId && x.MoveTo == movedPeriod);
+
+        var occurrences = await Calendar.OccurrencesAsync(requestedPeriod.Start, requestedPeriod.End);
+        occurrences.Should().ContainSingle().Which.Id.Should().Be(occurrenceId);
+
+        var filteredOccurrences = await Calendar.OccurrencesAsync(
+            requestedPeriod.Start,
+            requestedPeriod.End,
+            FilterRule.Eq("name", "NAME"));
+        filteredOccurrences.Should().ContainSingle().Which.Id.Should().Be(occurrenceId);
+    }
+
+    private static async Task<TResult> InvokeRepositoryMethodAsync<TResult>(
+        IEventRepository<EventData> repository,
+        string methodName,
+        params object?[] parameters)
+    {
+        var method = typeof(EventRepository<EventData>).GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+        return await (Task<TResult>)method!.Invoke(repository, parameters)!;
     }
 
     [Test]
