@@ -55,7 +55,8 @@ public class EventRepository<TData> : IEventRepository<TData>
         var recurrentEventIds = ids.Where(EventId.IsRecurrent);
 
         var eventRows = await Events.Where(x => Enumerable.Contains(eventIds, x.Id)).ToArrayAsync();
-        var recurrentEventRows = await RecurrentEvents.Where(x => Enumerable.Contains(recurrentEventIds, x.Id)).ToArrayAsync();
+        var recurrentEventRows =
+            await RecurrentEvents.Where(x => Enumerable.Contains(recurrentEventIds, x.Id)).ToArrayAsync();
         return eventRows.Select(Instance).Concat(recurrentEventRows.Select(Instance)).OfType<T>().ToArray();
     }
 
@@ -160,8 +161,11 @@ public class EventRepository<TData> : IEventRepository<TData>
 
         var recurrentEventRows = await MatchRecurrentEventRowsAsync(period, dataFilterRule);
         var eventRows = await MatchEventRowsAsync(period, dataFilterRule, recurrentEventRows);
-        recurrentEventRows = await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows);
-        return eventRows.Select(Instance).Concat(recurrentEventRows.Select(Instance)).ToArray();
+        var movedEventRows = await MatchMovedEventRowsAsync(period, dataFilterRule, recurrentEventRows);
+        recurrentEventRows = await EnsureAllRequiredRecurrentEventRowsAsync(eventRows, recurrentEventRows, movedEventRows);
+        return eventRows
+            .Concat(movedEventRows)
+            .DistinctBy(x => x.Id).Select(Instance).Concat(recurrentEventRows.Select(Instance)).ToArray();
     }
 
     private async Task<IReadOnlyCollection<RecurrentEventRow<TData>>> MatchRecurrentEventRowsAsync(
@@ -204,14 +208,41 @@ public class EventRepository<TData> : IEventRepository<TData>
         return await queryable.ToArrayAsync();
     }
 
+    private async Task<IReadOnlyCollection<EventRow<TData>>> MatchMovedEventRowsAsync(
+        Period<DateTimeOffset> period,
+        FilterRule? dataFilterRule,
+        IReadOnlyCollection<RecurrentEventRow<TData>> recurrentEventRows)
+    {
+        var queryable = Events
+            .Where(x => x.MoveTo != null)
+            .Where(x => x.MoveTo!.Start < period.End)
+            .Where(x => x.MoveTo!.End > period.Start);
+
+        if (dataFilterRule != null)
+        {
+            var filterRule = FilterRule.Or(
+                dataFilterRule,
+                FilterRule.In("recurrentEventId", recurrentEventRows.Select(x => x.Id).ToArray()));
+
+            queryable = queryable.Where(_eventRowFieldMap, filterRule, FilterOptions.RemoveNotNullChecks);
+        }
+
+        return await queryable.ToArrayAsync();
+    }
+
     // This issue may appear when some recurrence exception matched by data or effective period, but
     // it's original recurrent event doesn't
     private async Task<IReadOnlyCollection<RecurrentEventRow<TData>>> EnsureAllRequiredRecurrentEventRowsAsync(
         IReadOnlyCollection<EventRow<TData>> eventRows,
-        IReadOnlyCollection<RecurrentEventRow<TData>> recurrentEventRows)
+        IReadOnlyCollection<RecurrentEventRow<TData>> recurrentEventRows,
+        IReadOnlyCollection<EventRow<TData>> movedEventRows)
     {
-        var requiredRecurrentEventIds = eventRows.Where(x => x.RecurrentEventId != null).Select(x => x.RecurrentEventId)
-            .Distinct().ToArray();
+        var requiredRecurrentEventIds = eventRows
+            .Concat(movedEventRows)
+            .Where(x => x.RecurrentEventId != null)
+            .Select(x => x.RecurrentEventId!)
+            .Distinct()
+            .ToArray();
         var existingRecurrentEventIds = recurrentEventRows.Select(x => x.Id).ToArray();
         var missedRecurrentEventIds = requiredRecurrentEventIds.Except(existingRecurrentEventIds).ToArray();
         var missedRecurrentEventRows =
